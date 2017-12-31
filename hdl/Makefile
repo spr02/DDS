@@ -1,6 +1,7 @@
 SRC=\
 	helper_util.vhd\
 	cplx_lut.vhd\
+	lfsr.vhd\
 	dds_core.vhd\
 	lut_tb.vhd\
 	dds_tb.vhd

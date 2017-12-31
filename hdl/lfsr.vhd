@@ -16,6 +16,10 @@
 -- Revision 0.01 - File Created
 -- Additional Comments: 
 --
+-- Polynomial can be looked up e.g. at https://www.xilinx.com/support/documentation/application_notes/xapp210.pdf
+-- The format of the generic LSFR_POLY is "x^0 x^1 ... x^(N-1)" note that x^N does not have to be set as it will be set
+-- implicitly!
+--
 ----------------------------------------------------------------------------------
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -26,7 +30,7 @@ entity LFSR is
 		generic(
 			RND_WIDTH		: integer := 9;
 			INITIAL_SEED	: integer := 13;
-			LFSR_POLY		: std_logic_vector := "000010000"
+			LFSR_POLY		: std_logic_vector := "100001000"
 		);
 		port(
 			ClkxCI      : in	std_logic;
@@ -78,12 +82,14 @@ begin
 	   variable FeedbackxD     : std_logic;
 	begin
 	
-        if (to_integer(unsigned(RndOutxDP(RND_WIDTH - 1 downto 1))) = 0) then
-            FeedbackxD := not RndOutxDP(0);
-        else
-            FeedbackxD := RndOutxDP(0);
-        end if;
-	    
+--         -- This can be used to generate the value zero.
+--         if (to_integer(unsigned(RndOutxDP(RND_WIDTH - 1 downto 1))) = 0) then
+--             FeedbackxD := not RndOutxDP(0);
+--         else
+--             FeedbackxD := RndOutxDP(0);
+--         end if;
+
+	    FeedbackxD := RndOutxDP(0);
         RndOutxDN(RND_WIDTH - 1) <= FeedbackxD;		-- LSB connects to MSB
 		for I in (RND_WIDTH - 1) downto 1 loop
 		    --report "i = " & integer'image(I) & " " & std_logic'image(LFSR_POLY(I));

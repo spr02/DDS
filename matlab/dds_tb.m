@@ -3,14 +3,14 @@ len = 10000;                             % number of samples to be generated fro
 lfsr_seed = floor(rand(1) * (pow2(32) - 1));   % random seed for lfsr
 lfsr_poly  = [32 22 2 1];               % polynomial for lfsr
 
-DITHERING = true;           % enable phase_acc dithering
-TAYLOR = false;              % enable taylor series exapansion of LUT values
+DITHERING = false;           % enable phase_acc dithering
+TAYLOR = true;              % enable taylor series exapansion of LUT values
 SWEEP = false;              % do a frequency sweep
 SWEEP_UP_DOWN = false;      % do linear up and down sweep or only up
 
 % bit widths
 N_lut_addr = 10;    % LUT size in bit (actual LUT size will be N-2 since we exploit symmertries in sine)
-N_lut = 12;         % number of data bis in LUT
+N_lut = 16;         % number of data bis in LUT
 N_adc = 12;         % number of bits of the ADC
 N_phase = 32;       % number of bits for phase accumulator
 N_lfsr = 32;        % number of bits for the lfsr (psrn generator)
@@ -79,28 +79,27 @@ sin_grad = sin_grad - dds_out_sin;
 cos_grad = cos_grad - dds_out_cos;
 
 %187/-188
-% if TAYLOR == true
-%     correction_sin = floor(sin_grad .* phase_acc_lsb / pow2(N_phase - N_lut_addr));
-%     dds_out_sin = dds_out_sin + correction_sin;
-%     correction_cos = floor(cos_grad .* phase_acc_lsb / pow2(N_phase - N_lut_addr));
-%     dds_out_cos = dds_out_cos + correction_cos;
-% end
-
-
 if TAYLOR == true
-    phase_acc_lsb = phase_acc_lsb / pow2(N_phase);
-    correction_sin = floor(dds_out_cos / pow2(6) .* phase_acc_lsb);
-    correction_cos = floor(dds_out_sin / pow2(6) .* phase_acc_lsb);
+    correction_sin = floor(sin_grad .* phase_acc_lsb / pow2(N_phase - N_lut_addr));
     dds_out_sin = dds_out_sin + correction_sin;
+    correction_cos = floor(cos_grad .* phase_acc_lsb / pow2(N_phase - N_lut_addr));
     dds_out_cos = dds_out_cos + correction_cos;
 end
 
 
-% dither_noise = lfsr(lfsr_seed, lfsr_poly, N_lfsr, N_lut - N_adc, len)';
-dither_noise = floor(rand(1, len) * pow2(N_lut - N_adc));
+% if TAYLOR == true
+%     phase_acc_lsb = phase_acc_lsb / pow2(N_phase);
+%     correction_sin = floor(dds_out_cos / pow2(6) .* phase_acc_lsb);
+%     correction_cos = floor(dds_out_sin / pow2(6) .* phase_acc_lsb);
+%     dds_out_sin = dds_out_sin + correction_sin;
+%     dds_out_cos = dds_out_cos + correction_cos;
+% end
+
+
+
 if N_lut > N_adc
-    % dither_noise = floor(rand(1, len) * pow2(N_lut - N_adc));
-%     dither_noise = lfsr(lfsr_seed, lfsr_poly, N_lfsr, N_lut - N_adc, len)';
+    dither_noise = lfsr(lfsr_seed, lfsr_poly, N_lfsr, N_lut - N_adc, len)';
+%     dither_noise = floor(rand(1, len) * pow2(N_lut - N_adc));
     dds_out_sin = floor((dds_out_sin + dither_noise) / pow2(N_lut - N_adc));
     dds_out_cos = floor((dds_out_cos + dither_noise) / pow2(N_lut - N_adc));
 end

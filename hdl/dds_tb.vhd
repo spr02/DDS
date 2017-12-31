@@ -14,13 +14,14 @@ architecture behav of dds_tb is
 	--------------------------------------------------------------------------------------
 	component dds_core is
 		generic(
-			LUT_DEPTH		: integer := 8;		-- number of lut address bits
-			LUT_AMPL_PREC	: integer := 16;	-- number of databits stored in LUT for amplitude
-			LUT_GRAD_PREC	: integer := 5;		-- number of databist stored in LUT for gradient (slope)
-			PHASE_WIDTH		: integer := 32;	-- number of bits of phase accumulator
-			LFSR_WIDTH		: integer := 32;	-- number of bits used for the LFSR/PNGR
-			LFSR_SEED		: integer := 12364;	-- seed for LFSR
-			OUT_WIDTH		: integer := 12		-- number of bits actually output (should be equal to DAC bits)
+			LUT_DEPTH		: integer := 8;					-- number of lut address bits
+			LUT_AMPL_PREC	: integer := 16;				-- number of databits stored in LUT for amplitude
+			LUT_GRAD_PREC	: integer := 5;					-- number of databist stored in LUT for gradient (slope)
+			PHASE_WIDTH		: integer := 32;				-- number of bits of phase accumulator
+			LFSR_WIDTH		: integer := 32;				-- number of bits used for the LFSR/PNGR
+            LFSR_POLY       : std_logic_vector := "111";	-- polynomial of the LFSR/PNGR
+			LFSR_SEED		: integer := 12364;				-- seed for LFSR
+			OUT_WIDTH		: integer := 12					-- number of bits actually output (should be equal to DAC bits)
 		);
 		port(
 			ClkxCI			: in  std_logic;
@@ -94,6 +95,7 @@ begin
 		LUT_GRAD_PREC	=> LUT_GRAD_PREC,		-- number of databist stored in LUT for gradient (slope)
 		PHASE_WIDTH		=> PHASE_WIDTH,	-- number of bits of phase accumulator
 		LFSR_WIDTH		=> LFSR_WIDTH,	-- number of bits used for the LFSR/PNGR
+		LFSR_POLY       => "11100000000000000000001000000000", -- 0,1,2,22,32 (32 is set implicitly)
 		LFSR_SEED		=> 12364,	-- seed for LFSR
 		OUT_WIDTH		=> OUT_WIDTH		-- number of bits actually output (should be equal to DAC bits)
 	)
@@ -151,7 +153,7 @@ begin
 		DitherMasksxS	<= (others => '0');
 		
 		PhiInxD			<= (others => '0');
-		FTWxD			<= "00000000010000000000000000000000";
+		FTWxD			<= "00000000010000000000000000000000"; 
 		
 		wait until rising_edge(RstxRB);
 		wait until rising_edge(ClkxC);

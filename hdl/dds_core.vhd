@@ -20,6 +20,7 @@ entity dds_core is
 		LUT_GRAD_PREC	: integer := 5;		-- number of databist stored in LUT for gradient (slope)
 		PHASE_WIDTH		: integer := 32;	-- number of bits of phase accumulator
 		LFSR_WIDTH		: integer := 32;	-- number of bits used for the LFSR/PNGR
+        LFSR_POLY       : std_logic_vector := "111"; -- polynomial of the LFSR/PNGR
 		LFSR_SEED		: integer := 12364;	-- seed for LFSR
 		OUT_WIDTH		: integer := 12		-- number of bits actually output (should be equal to DAC bits)
 	);
@@ -145,7 +146,7 @@ begin
 	generic map(
 		RND_WIDTH		=> LFSR_WIDTH,
 		INITIAL_SEED	=> LFSR_SEED,
-		LFSR_POLY		=> "00000000000000000000000000000000"
+		LFSR_POLY		=> LFSR_POLY
 	)
 	port map(
 		ClkxCI			=> ClkxCI,
