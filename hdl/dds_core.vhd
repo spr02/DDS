@@ -137,7 +137,7 @@ architecture arch of dds_core is
 	
 	-- dithering noise generator
 	signal DitherNoisexD					: std_logic_Vector((LFSR_WIDTH - 1) downto 0);
-	signal DitherNoiseOutxD				: std_logic_vector((LUT_AMPL_PREC - OUT_WIDTH - 1) downto 0);
+	signal DitherNoiseAmplxD				: std_logic_vector((LUT_AMPL_PREC - OUT_WIDTH - 1) downto 0);
 	
 	-- look up table
 	signal Lut0AddrxS					: std_logic_vector((LUT_DEPTH - 1) downto 0);
@@ -156,14 +156,11 @@ architecture arch of dds_core is
 	
 	-- output signals
 	signal TaylorCorrectedIxD			: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
+	signal TaylorCorrectedQxD			: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
 	signal tmp							: std_logic_vector((OUT_WIDTH - 1) downto 0);
 	signal QxDN, QxDP					: std_logic_vector((OUT_WIDTH - 1) downto 0);
 	signal IxDN, IxDP 					: std_logic_vector((OUT_WIDTH - 1) downto 0);
-	
-	signal AxD							: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
-	signal BxD							: std_logic_vector((LUT_AMPL_PREC - OUT_WIDTH - 1) downto 0);
-	signal SumxD						: std_logic_vector(LUT_AMPL_PREC downto 0);
-	signal Sum2xD						: std_logic_Vector((LUT_AMPL_PREC - 1) downto 0);
+
 begin
 	------------------------------------------------------------------------------------------------
 	--	Instantiate Components
@@ -209,7 +206,7 @@ begin
 		RndOutxDO		=> DitherNoisexD
 	);
 	
-	DitherNoiseOutxD <= DitherNoisexD((LUT_AMPL_PREC - OUT_WIDTH - 1) downto 0);
+	DitherNoiseAmplxD <= DitherNoisexD((LUT_AMPL_PREC - OUT_WIDTH - 1) downto 0);
 	
 	LINE0 : DelayLine
 	generic map (
@@ -239,6 +236,23 @@ begin
 		SlopexDI	=> SlopeIxD,
 		GradxDI		=> PhaseGradxDP,
 		AmplxDO		=> TaylorCorrectedIxD
+	);
+	
+	TAYLOR_Q : taylor_interpolation
+	generic map(
+		LUT_AMPL_PREC	=> LUT_AMPL_PREC,		-- number of databits stored in LUT for amplitude
+		LUT_GRAD_PREC	=> LUT_GRAD_PREC,			-- number of databist stored in LUT for gradient (slope)
+		CORR_WIDTH		=> LUT_AMPL_PREC,			-- number of bits used from the multiplier
+		GRAD_WIDTH		=> PHASE_WIDTH - LUT_DEPTH,	-- number of bits of phase accumulator (LSBs -> PHASE_WIDTH - LUT_DEPTH)
+		OUT_WIDTH		=> LUT_AMPL_PREC			-- number of bits actually output (should be equal to DAC bits)
+	)
+	port map(
+		ClkxCI		=> ClkxCI,
+		RstxRBI		=> RstxRBI,
+		AmplxDI		=> Lut0AmplQxDN,
+		SlopexDI	=> SlopeQxD,
+		GradxDI		=> PhaseGradxDP,
+		AmplxDO		=> TaylorCorrectedQxD
 	);
 	
 	tmp <= TaylorCorrectedIxD(15 downto 4);
@@ -347,122 +361,81 @@ begin
 	
 	
 	
-	--------------------------------------------
-	-- ProcessName: p_comb_correction_i
-	-- This process implements a multiplier, that is used to calculate the taylor correction value.
-	--------------------------------------------
-	p_comb_correction_i : process(SlopeIxD, PhaseGradxDP)
-		constant PosMSB			: integer := LUT_GRAD_PREC + PHASE_WIDTH - LUT_DEPTH;
-		constant PosLSB			: integer := LUT_GRAD_PREC + PHASE_WIDTH - LUT_DEPTH - LUT_AMPL_PREC;
-		variable PhaseGradI		: signed((PHASE_WIDTH - LUT_DEPTH) downto 0); -- 25
-		variable LutSlopeI		: signed((LUT_GRAD_PREC - 1) downto 0); -- 16
-		variable CorrectionI	: signed((LUT_GRAD_PREC + PHASE_WIDTH - LUT_DEPTH) downto 0); --16+32-8+1 = 41
-	begin
-		CorrectionI		:= (others => '0');
-		LutSlopeI		:= signed(SlopeIxD);
-		PhaseGradI		:= signed("0" & PhaseGradxDP); -- get the LSBs of the PhaseAccQ
-	
-		CorrectionI		:= LutSlopeI * PhaseGradI;
-		CorrIxDN		<= std_logic_vector(CorrectionI((PosMSB - 1) downto PosLSB));
-	end process p_comb_correction_i;
-	
-	--------------------------------------------
-	-- ProcessName: p_comb_taylor_i
-	-- This process implements the optional linear interpolation of the output samples of the I component.
-	--------------------------------------------
-	p_comb_taylor_i : process (TaylorEnxSI, Lut0AmplIxDP, CorrIxDP, SlopeIxD, DitherNoisexD, PhaseGradxDP, TruncDithEnxSI)
-		variable ComponentI		: signed((Lut0AmplIxDP'length - 1) downto 0);
-		variable LutAmplI		: signed((Lut0AmplIxDP'length - 1) downto 0);
-		variable DitherI		: unsigned((DitherNoisexD'length - 1) downto 0);
-		variable CorrectionI	: signed((LUT_AMPL_PREC - 1) downto 0);
-	begin
-		ComponentI	:= (others => '0');
-		CorrectionI	:= signed(CorrIxDP);
-		DitherI		:= unsigned(DitherNoisexD);
-		LutAmplI	:= signed(Lut0AmplIxDP);
-	
-		if (TaylorEnxSI = '1') then
-			ComponentI		:= LutAmplI + CorrectionI;
-		else
-			ComponentI		:= LutAmplI;
-		end if;
-		
-		if (TruncDithEnxSI = '1') then
-			ComponentI		:= signed(unsigned(ComponentI) + resize(DitherI((LUT_AMPL_PREC-OUT_WIDTH-1) downto 0), ComponentI'length));
-		end if;
-		
--- 		IxDN <= std_logic_vector(ComponentI((LUT_AMPL_PREC - 1)  downto (LUT_AMPL_PREC - OUT_WIDTH)));
-	end process p_comb_taylor_i;
-	
-	
-	
-	
-	--------------------------------------------
-	-- ProcessName: p_comb_correction_q
-	-- This process implements a multiplier, that is used to calculate the taylor correction value.
-	--------------------------------------------
-	p_comb_correction_q : process(SlopeQxD, PhaseGradxDP)
-		constant PosMSB			: integer := LUT_GRAD_PREC + PHASE_WIDTH - LUT_DEPTH;
-		constant PosLSB			: integer := LUT_GRAD_PREC + PHASE_WIDTH - LUT_DEPTH - LUT_AMPL_PREC;
-		variable PhaseGradQ		: signed((PHASE_WIDTH - LUT_DEPTH) downto 0); -- 25
-		variable LutSlopeQ		: signed((LUT_GRAD_PREC - 1) downto 0); -- 16
-		variable CorrectionQ	: signed((LUT_GRAD_PREC + PHASE_WIDTH - LUT_DEPTH) downto 0); --16+32-8+1 = 41
-	begin
-		CorrectionQ	:= (others => '0');
-		LutSlopeQ	:= signed(SlopeQxD);
-		PhaseGradQ	:= signed("0" & PhaseGradxDP); -- get the LSBs of the PhaseAccQ
-	
-		CorrectionQ		:= LutSlopeQ * PhaseGradQ;
-		CorrQxDN		<= std_logic_vector(CorrectionQ((PosMSB - 1) downto PosLSB));
-	end process p_comb_correction_q;
-	
-	--------------------------------------------
-	-- ProcessName: p_comb_taylor_q
-	-- This process implements the optional linear interpolation of the output samples of the Q component.
-	--------------------------------------------
-	p_comb_taylor_q : process (TaylorEnxSI, Lut0AmplQxDP, CorrQxDP, SlopeQxD, DitherNoisexD, PhaseGradxDP, TruncDithEnxSI)
-		variable ComponentQ		: signed((Lut0AmplQxDP'length - 1) downto 0);
-		variable LutAmplQ		: signed((Lut0AmplQxDP'length - 1) downto 0);
-		variable DitherQ		: unsigned((DitherNoisexD'length - 1) downto 0);
-		variable CorrectionQ	: signed((LUT_AMPL_PREC - 1) downto 0);
-	begin
-		ComponentQ	:= (others => '0');
-		CorrectionQ	:= signed(CorrQxDP);
-		DitherQ		:= unsigned(DitherNoisexD);
-		LutAmplQ	:= signed(Lut0AmplQxDP);
-	
-		if (TaylorEnxSI = '1') then
-			ComponentQ		:= LutAmplQ + CorrectionQ;
-		else
-			ComponentQ		:= LutAmplQ;
-		end if;
-		
-		if (TruncDithEnxSI = '1') then
-			ComponentQ		:= signed(unsigned(ComponentQ) + resize(DitherQ((LUT_AMPL_PREC-OUT_WIDTH-1) downto 0), ComponentQ'length));
-		end if;
-		
-		QxDN <= std_logic_vector(ComponentQ((LUT_AMPL_PREC - 1)  downto (LUT_AMPL_PREC - OUT_WIDTH)));
-	end process p_comb_taylor_q;
-	
-	
-	
--- 	function twos_complement (x : std_logic_vector) return std_logic_vector is
--- 		variable tmp	: std_logic_vector((x'length) downto 0);
+-- 	--------------------------------------------
+-- 	-- ProcessName: p_comb_correction_q
+-- 	-- This process implements a multiplier, that is used to calculate the taylor correction value.
+-- 	--------------------------------------------
+-- 	p_comb_correction_q : process(SlopeQxD, PhaseGradxDP)
+-- 		constant PosMSB			: integer := LUT_GRAD_PREC + PHASE_WIDTH - LUT_DEPTH;
+-- 		constant PosLSB			: integer := LUT_GRAD_PREC + PHASE_WIDTH - LUT_DEPTH - LUT_AMPL_PREC;
+-- 		variable PhaseGradQ		: signed((PHASE_WIDTH - LUT_DEPTH) downto 0); -- 25
+-- 		variable LutSlopeQ		: signed((LUT_GRAD_PREC - 1) downto 0); -- 16
+-- 		variable CorrectionQ	: signed((LUT_GRAD_PREC + PHASE_WIDTH - LUT_DEPTH) downto 0); --16+32-8+1 = 41
 -- 	begin
--- -- 		tmp := not x;
--- -- 		return std_logic_vector(unsigned(tmp) + 1);
--- 		tmp := '0' & (not x);
--- 		tmp := std_logic_vector(unsigned(tmp) + 1);
--- 		return tmp((x'length - 1) downto 0);
--- 	end function twos_complement;
-
-	p_comb_dither_add : process (TaylorCorrectedIxD, DitherNoiseOutxD)
+-- 		CorrectionQ	:= (others => '0');
+-- 		LutSlopeQ	:= signed(SlopeQxD);
+-- 		PhaseGradQ	:= signed("0" & PhaseGradxDP); -- get the LSBs of the PhaseAccQ
+-- 	
+-- 		CorrectionQ		:= LutSlopeQ * PhaseGradQ;
+-- 		CorrQxDN		<= std_logic_vector(CorrectionQ((PosMSB - 1) downto PosLSB));
+-- 	end process p_comb_correction_q;
+-- 	
+-- 	--------------------------------------------
+-- 	-- ProcessName: p_comb_taylor_q
+-- 	-- This process implements the optional linear interpolation of the output samples of the Q component.
+-- 	--------------------------------------------
+-- 	p_comb_taylor_q : process (TaylorEnxSI, Lut0AmplQxDP, CorrQxDP, SlopeQxD, DitherNoisexD, PhaseGradxDP, TruncDithEnxSI)
+-- 		variable ComponentQ		: signed((Lut0AmplQxDP'length - 1) downto 0);
+-- 		variable LutAmplQ		: signed((Lut0AmplQxDP'length - 1) downto 0);
+-- 		variable DitherQ		: unsigned((DitherNoisexD'length - 1) downto 0);
+-- 		variable CorrectionQ	: signed((LUT_AMPL_PREC - 1) downto 0);
+-- 	begin
+-- 		ComponentQ	:= (others => '0');
+-- 		CorrectionQ	:= signed(CorrQxDP);
+-- 		DitherQ		:= unsigned(DitherNoisexD);
+-- 		LutAmplQ	:= signed(Lut0AmplQxDP);
+-- 	
+-- 		if (TaylorEnxSI = '1') then
+-- 			ComponentQ		:= LutAmplQ + CorrectionQ;
+-- 		else
+-- 			ComponentQ		:= LutAmplQ;
+-- 		end if;
+-- 		
+-- 		if (TruncDithEnxSI = '1') then
+-- 			ComponentQ		:= signed(unsigned(ComponentQ) + resize(DitherQ((LUT_AMPL_PREC-OUT_WIDTH-1) downto 0), ComponentQ'length));
+-- 		end if;
+-- 		
+-- 		QxDN <= std_logic_vector(ComponentQ((LUT_AMPL_PREC - 1)  downto (LUT_AMPL_PREC - OUT_WIDTH)));
+-- 	end process p_comb_taylor_q;
+	
+	
+	p_comb_dither_add_i : process (TaylorCorrectedIxD, DitherNoiseAmplxD)
+		variable Val		: signed((LUT_AMPL_PREC - 1) downto 0);
+		variable Dither		: signed((LUT_AMPL_PREC - 1) downto 0);
+		variable Sum		: signed((LUT_AMPL_PREC - 1) downto 0);
+		constant tmp		: natural := 15;
+	begin
+		Val		:= signed(TaylorCorrectedIxD);
+		Dither	:= signed(resize(unsigned(DitherNoiseAmplxD), Dither'length));
+		Sum		:= Val + Dither;
+		
+		-- saturate if a was positive and sum overflowed (both versions work)
+		if Val(Val'left) = '0' and Sum(Sum'left) = '1' then
+-- 			Sum := "0" & (Sum'left-1 downto 0 => '1');
+			Sum := (tmp => '1', others => '0');
+			Sum := to_signed(2**(LUT_AMPL_PREC-1) - 1, LUT_AMPL_PREC);
+		end if;	
+		
+		IxDN <= std_logic_vector(Sum(Sum'left downto (LUT_AMPL_PREC - OUT_WIDTH)));
+	end process p_comb_dither_add_i;
+	
+	p_comb_dither_add_q : process (TaylorCorrectedQxD, DitherNoiseAmplxD)
 		variable Val		: signed((LUT_AMPL_PREC - 1) downto 0);
 		variable Dither		: signed((LUT_AMPL_PREC - 1) downto 0);
 		variable Sum		: signed((LUT_AMPL_PREC - 1) downto 0);
 	begin
-		Val		:= signed(TaylorCorrectedIxD);
-		Dither	:= signed(resize(unsigned(DitherNoiseOutxD), Dither'length));
+		Val		:= signed(TaylorCorrectedQxD);
+		Dither	:= signed(resize(unsigned(DitherNoiseAmplxD), Dither'length));
 		Sum		:= Val + Dither;
 		
 		-- saturate if a was positive and sum overflowed (both versions work)
@@ -471,40 +444,10 @@ begin
 			Sum := to_signed(2**(LUT_AMPL_PREC-1) - 1, LUT_AMPL_PREC);
 		end if;	
 		
-		IxDN <= std_logic_vector(Sum(Sum'left downto (LUT_AMPL_PREC - OUT_WIDTH)));
-	end process p_comb_dither_add;
-
-
--- 	AxD <= "0111111111111111";
--- 	AxD <= (15 => '0', others => '1');
--- 	BxD <=             "0011";
--- 	
--- 	-- "simple" saturation logic as DitherNoisexD is always positive -> we only have to check for positive overflows
--- 	p_comb_sat_add : process (AxD, BxD)
--- 		variable a		: signed(AxD'length - 1 downto 0);
--- 		variable b		: signed(AxD'length - 1 downto 0);
--- 		variable sum	: signed(AxD'length - 1 downto 0);
--- 	begin
--- 		a	:= signed(AxD);
--- 		b	:= signed(resize(unsigned(BxD), b'length));
--- 		sum	:= a + b;
--- 		
--- 		if a(a'length - 1) = '0' and sum(sum'length - 1) = '1' then -- if a was positive and sum overflowd
--- 			sum := "0111111111111111";
--- 		end if;
--- 		
--- 		SumxD <= "0" & std_logic_vector(sum);
-		
-	
--- 		a := resize(signed(AxD), a'length);
--- 		b := signed("000000000000" & BxD); 
--- 		sum := a + b;
--- 		SumxD <= "0" & std_logic_vector(sum);
--- 		Sum2xD <= std_logic_Vector(sum(15 downto 0));
--- 	end process p_comb_sat_add;
+		QxDN <= std_logic_vector(Sum(Sum'left downto (LUT_AMPL_PREC - OUT_WIDTH)));
+	end process p_comb_dither_add_q;
 	
 	
-		
 	
 	------------------------------------------------------------------------------------------------
 	--	Output Assignment

@@ -43,7 +43,7 @@ architecture arch of taylor_interpolation is
 	signal CorrxDP, CorrxDN		: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
 	signal AmplInxDP			: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
 
-	-- output signals
+	-- output signal buffer
 	signal AmplxDN, AmplxDP		: std_logic_vector((OUT_WIDTH - 1) downto 0);
 begin
 	
@@ -80,7 +80,7 @@ begin
     -- This process implements a multiplier, that is used to calculate the taylor correction value.
     --------------------------------------------
 	p_comb_correction : process(SlopexDI, GradxDI)
-		constant PosMSB			: integer := LUT_GRAD_PREC + GRAD_WIDTH; --16+32-10 = 38
+		constant PosMSB			: integer := LUT_GRAD_PREC + GRAD_WIDTH - 1; --16+32-10 = 38
 		constant PosLSB			: integer := LUT_GRAD_PREC + GRAD_WIDTH - CORR_WIDTH; --16+32-10-16 = 22
 		variable PhaseGrad		: signed(GRAD_WIDTH downto 0); -- 25
 		variable LutSlope		: signed((LUT_GRAD_PREC - 1) downto 0); -- 16
@@ -91,7 +91,7 @@ begin
 		PhaseGrad		:= signed("0" & GradxDI); -- get the LSBs of the PhaseAccQ
 	
 		Correction		:= LutSlope * PhaseGrad;
-		CorrxDN			<= std_logic_vector(Correction((PosMSB - 1) downto PosLSB));
+		CorrxDN			<= std_logic_vector(Correction(PosMSB downto PosLSB));
 	end process p_comb_correction;
 	
 	--------------------------------------------
@@ -109,7 +109,7 @@ begin
 	
 		CorrAmpl	:= LutAmpl + Correction;
 
-		AmplxDN <= std_logic_vector(CorrAmpl((LUT_AMPL_PREC - 1)  downto (LUT_AMPL_PREC - OUT_WIDTH)));
+		AmplxDN <= std_logic_vector(CorrAmpl(CorrAmpl'left  downto (LUT_AMPL_PREC - OUT_WIDTH)));
 	end process p_comb_taylor;
 
 	------------------------------------------------------------------------------------------------
