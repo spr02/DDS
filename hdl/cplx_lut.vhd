@@ -64,7 +64,7 @@ architecture arch of trig_lut is
 	function twos_complement (x : std_logic_vector) return std_logic_vector is
 		variable tmp	: std_logic_vector((x'length) downto 0);
 	begin
---		 tmp := not x;
+-- 		tmp := not x;
 -- 		return std_logic_vector(unsigned(tmp) + 1);
 		tmp := '0' & (not x);
 		tmp := std_logic_vector(unsigned(tmp) + 1);
@@ -142,7 +142,7 @@ begin
 	
 	LutAddrxS <= PhasexDI(LUT_DEPTH - 3 downto 0) when PhasexDI(LUT_DEPTH - 2) = '0' else twos_complement( PhasexDI(LUT_DEPTH - 3 downto 0) );
 	
-	-- output the "constant" value in extreme cases (pi/2)
+	-- output the "constant" value in extreme cases (pi/2), i.e. LutOutSinxD = 2^PRECISION-1 and LutOutCosxD = 0
 	LutOutSinxD	<= LutOutxD((2*LUT_AMPL_PREC - 1) downto LUT_AMPL_PREC) when OutConstxSP = '0' else std_logic_vector(to_unsigned(2**(LUT_AMPL_PREC-1) - 1, LUT_AMPL_PREC));
 	LutOutCosxD	<= LutOutxD((LUT_AMPL_PREC - 1) downto 0) when OutConstxSP = '0' else std_logic_vector(to_unsigned(0, LUT_AMPL_PREC));
 	

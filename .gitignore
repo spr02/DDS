@@ -1,0 +1,9 @@
+# general ignorance (e.g. kate)
+*~
+*.pdf
+
+# output files of ghdl
+*.o
+*.fst
+hdl/work-obj93.cf
+hdl/work-obj08.cf

@@ -1,7 +1,9 @@
 SRC=\
 	helper_util.vhd\
+	delay_line.vhd\
 	cplx_lut.vhd\
 	lfsr.vhd\
+	taylor.vhd\
 	dds_core.vhd\
 	lut_tb.vhd\
 	dds_tb.vhd
@@ -15,3 +17,4 @@ run :
 clean distclean::
 	ghdl --clean
 	ghdl --remove
+	rm -rf *.fst

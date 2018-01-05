@@ -1,12 +1,12 @@
 ----------------------------------------------------------------------------------
 ----------------------------------------------------------------------------
 -- Author:  Jannik Springer
---          jannik.springer@rwth-aachen.de
+--		  jannik.springer@rwth-aachen.de
 ----------------------------------------------------------------------------
 -- 
--- Create Date:    
+-- Create Date:	
 -- Design Name: 
--- Module Name:    
+-- Module Name:	
 -- Project Name: 
 -- Target Devices: 
 -- Tool versions: 
@@ -33,11 +33,11 @@ entity LFSR is
 			LFSR_POLY		: std_logic_vector := "100001000"
 		);
 		port(
-			ClkxCI      : in	std_logic;
-			RstxRBI     : in	std_logic;
+			ClkxCI		: in	std_logic;
+			RstxRBI	 	: in	std_logic;
 
-            EnablexSI   : in    std_logic;
-            
+			EnablexSI	: in	std_logic;
+			
 			-- load seed
 			LoadxSI		: in	std_logic;
 			SeedxDI		: in	std_logic_vector((RND_WIDTH - 1) downto 0);
@@ -49,13 +49,11 @@ end LFSR;
 
 
 architecture rtl of LFSR is
-    ------------------------------------------------
+	------------------------------------------------
 	--	Signals
 	------------------------------------------------	
 	signal RndOutxDP, RndOutxDN	: std_logic_vector((RND_WIDTH - 1) downto 0);
-    
 begin
-
 
 	------------------------------------------------
 	--	Synchronus process (sequential logic and registers)
@@ -68,41 +66,38 @@ begin
 			if (LoadxSI = '1') then
 				RndOutxDP <= SeedxDI;
 			else
-			    if (EnablexSI = '1') then
-                    RndOutxDP <= RndOutxDN;
-			    end if;
+				if (EnablexSI = '1') then
+					RndOutxDP <= RndOutxDN;
+				end if;
 			end if;
 		end if;
 	end process p_sync;
-	
+
 	------------------------------------------------
 	--	Combinatorical process (feed back logic)
 	------------------------------------------------
    	p_comb_FEED_BACK : process (RndOutxDP)
-	   variable FeedbackxD     : std_logic;
+	   variable FeedbackxD	 : std_logic;
 	begin
-	
---         -- This can be used to generate the value zero.
---         if (to_integer(unsigned(RndOutxDP(RND_WIDTH - 1 downto 1))) = 0) then
---             FeedbackxD := not RndOutxDP(0);
---         else
---             FeedbackxD := RndOutxDP(0);
---         end if;
-
-	    FeedbackxD := RndOutxDP(0);
-        RndOutxDN(RND_WIDTH - 1) <= FeedbackxD;		-- LSB connects to MSB
+-- 		-- This can be used to generate the value zero.
+-- 		if (to_integer(unsigned(RndOutxDP(RND_WIDTH - 1 downto 1))) = 0) then
+-- 			FeedbackxD := not RndOutxDP(0);
+-- 		else
+-- 			FeedbackxD := RndOutxDP(0);
+-- 		end if;
+		FeedbackxD := RndOutxDP(0);
+		
+		RndOutxDN(RND_WIDTH - 1) <= FeedbackxD;		-- LSB connects to MSB
 		for I in (RND_WIDTH - 1) downto 1 loop
-		    --report "i = " & integer'image(I) & " " & std_logic'image(LFSR_POLY(I));
 			if (LFSR_POLY(RND_WIDTH - I) = '1') then
 				RndOutxDN(I - 1) <= RndOutxDP(I) xor FeedbackxD;
 			else
 				RndOutxDN(I - 1) <= RndOutxDP(I);
 			end if;
 		end loop;
-		
 	end process p_comb_FEED_BACK;
-	
-	
+
+
 	------------------------------------------------
 	--	Output Assignment
 	------------------------------------------------

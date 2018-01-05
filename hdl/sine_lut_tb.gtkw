@@ -1,0 +1,28 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Fri Dec 29 14:23:34 2017
+[*]
+[dumpfile] "/mnt/storagedisk/workspace/10_projects/DDS/hdl/sine_lut_tb.fst"
+[dumpfile_mtime] "Fri Dec 29 14:22:57 2017"
+[dumpfile_size] 1185
+[savefile] "/mnt/storagedisk/workspace/10_projects/DDS/hdl/sine_lut_tb.gtkw"
+[timestart] 413000000
+[size] 1280 965
+[pos] 0 0
+*-29.575930 1261000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 276
+[signals_width] 246
+[sst_expanded] 1
+[sst_vpaned_height] 289
+@28
+i0.clkxci
+i0.rstxrbi
+@200
+-
+@24
+phasexd[7:0]
+@421
+sinxd[15:0]
+cosxd[15:0]
+[pattern_trace] 1
+[pattern_trace] 0

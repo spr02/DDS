@@ -1,5 +1,5 @@
 %% Parameters for DDS
-len = 10000;                             % number of samples to be generated from dds
+len = 1000;                             % number of samples to be generated from dds
 lfsr_seed = floor(rand(1) * (pow2(32) - 1));   % random seed for lfsr
 lfsr_poly  = [32 22 2 1];               % polynomial for lfsr
 
@@ -17,7 +17,7 @@ N_lfsr = 32;        % number of bits for the lfsr (psrn generator)
 
 %frequency parameters
 F_clk = 150e6;                  % clock frequency (150MHz -> max synthesizable frequency is 75MHz)
-F_0 = 0.01 * F_clk;             % frequency to be generated (in case of sweep, the start frequency)
+F_0 = 0.21 * F_clk;             % frequency to be generated (in case of sweep, the start frequency)
 F_1 = 0.25 * F_clk;              % stop frequency for sweep
 F_res = F_clk / pow2(N_phase);  % calculate frequency resolution in Hz
 
@@ -25,6 +25,10 @@ F_res = F_clk / pow2(N_phase);  % calculate frequency resolution in Hz
 %% calculate phase/frequency tuning word
 FTW_0 = round(F_0 / F_res);             % frequency tuning word, value used to increment the phase accumulator
 FTW_1 = round(F_1 / F_res);
+% FTW_0 = bin2dec('00000001000000000000000000000000');
+% FTW_0 = bin2dec('00000001111111111111111111111111');
+% FTW_0 = bin2dec('00000001000000000000000000000001');
+FTW_0 = 901943132;
 diff = (FTW_1 - FTW_0) / (len / 2);
 F_0_achieved = FTW_0 * F_res;
 
@@ -52,6 +56,7 @@ phase_acc = mod(phase_acc, pow2(N_phase));
 
 if DITHERING == true
     dither_noise = rand(1, len) * pow2(N_phase - N_lut_addr);
+%     dither_noise = lfsr(lfsr_seed, lfsr_poly, N_lfsr, N_phase - N_lut_addr, len)'
     phase_acc = phase_acc + dither_noise;
     phase_acc = mod(phase_acc, pow2(N_phase));
 end
@@ -99,9 +104,19 @@ end
 
 if N_lut > N_adc
     dither_noise = lfsr(lfsr_seed, lfsr_poly, N_lfsr, N_lut - N_adc, len)';
+%     dither_noise = bin_usgn_to_sgn(dither_noise, N_lut - N_adc + 1);
 %     dither_noise = floor(rand(1, len) * pow2(N_lut - N_adc));
-    dds_out_sin = floor((dds_out_sin + dither_noise) / pow2(N_lut - N_adc));
-    dds_out_cos = floor((dds_out_cos + dither_noise) / pow2(N_lut - N_adc));
+%     dither_noise = zeros(size(dds_out_sin));
+    dds_out_sin = dds_out_sin + dither_noise;
+    dds_out_sin(dds_out_sin > (pow2(N_lut - 1) - 1)) = pow2(N_lut - 1) - 1; % simulate positive saturation
+    dds_out_sin = floor(dds_out_sin / pow2(N_lut - N_adc)); %truncate bits
+%     dds_out_sin(dds_out_sin > 2047) = 2047;
+%     dds_out_sin(dds_out_sin < -2048) = -2048;
+    dds_out_cos = dds_out_cos + dither_noise;
+    dds_out_cos(dds_out_cos > (pow2(N_lut - 1) - 1)) =  pow2(N_lut - 1) - 1; % simulate positive saturation
+    dds_out_cos = floor(dds_out_cos / pow2(N_lut - N_adc));
+%     dds_out_cos(dds_out_cos > 2047) = 2047;
+%     dds_out_cos(dds_out_cos < -2048) = -2048;
 end
 
 tau = 600;

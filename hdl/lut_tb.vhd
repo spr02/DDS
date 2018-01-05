@@ -34,7 +34,7 @@ architecture behav of sine_lut_tb is
 	--------------------------------------------------------------------------------------
 	-- Signals
 	--------------------------------------------------------------------------------------
-	file LOG_FILE : text is out "log.m";
+	file LOG_FILE : text is out "../matlab/lut_log.m";
 	
 	constant LUT_DEPTH				: integer := 8;
 	constant LUT_AMPL_PREC			: integer := 16;
