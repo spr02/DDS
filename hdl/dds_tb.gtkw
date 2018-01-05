@@ -1,20 +1,20 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Fri Jan  5 00:16:34 2018
+[*] Fri Jan  5 18:23:39 2018
 [*]
 [dumpfile] "/home/jannik/git/DDS/hdl/dds_tb.fst"
-[dumpfile_mtime] "Fri Jan  5 00:16:20 2018"
-[dumpfile_size] 201224
+[dumpfile_mtime] "Fri Jan  5 18:23:24 2018"
+[dumpfile_size] 217899
 [savefile] "/home/jannik/git/DDS/hdl/dds_tb.gtkw"
 [timestart] 0
-[size] 1280 995
-[pos] 3199 0
+[size] 1920 1015
+[pos] 2567 0
 *-26.221088 250000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] i0.
 [sst_width] 275
 [signals_width] 273
 [sst_expanded] 1
-[sst_vpaned_height] 334
+[sst_vpaned_height] 342
 @28
 clkxc
 rstxrb
@@ -44,6 +44,9 @@ i0.corrqxdp[15:0]
 -
 @420
 i0.taylorcorrectedixd[15:0]
+@23
+i0.dithernoiseoutxd[3:0]
+@420
 i0.tmp[11:0]
 ixd[11:0]
 qxd[11:0]
@@ -55,7 +58,6 @@ i0.axd[15:0]
 i0.bxd[3:0]
 @420
 i0.sumxd[16:0]
-@421
 i0.sum2xd[15:0]
 [pattern_trace] 1
 [pattern_trace] 0

@@ -136,7 +136,8 @@ architecture arch of dds_core is
 	
 	
 	-- dithering noise generator
-	signal DitherNoisexD				: std_logic_vector((LFSR_WIDTH - 1) downto 0);
+	signal DitherNoisexD					: std_logic_Vector((LFSR_WIDTH - 1) downto 0);
+	signal DitherNoiseOutxD				: std_logic_vector((LUT_AMPL_PREC - OUT_WIDTH - 1) downto 0);
 	
 	-- look up table
 	signal Lut0AddrxS					: std_logic_vector((LUT_DEPTH - 1) downto 0);
@@ -207,6 +208,8 @@ begin
 		SeedxDI			=> (others => '0'),
 		RndOutxDO		=> DitherNoisexD
 	);
+	
+	DitherNoiseOutxD <= DitherNoisexD((LUT_AMPL_PREC - OUT_WIDTH - 1) downto 0);
 	
 	LINE0 : DelayLine
 	generic map (
@@ -388,7 +391,7 @@ begin
 			ComponentI		:= signed(unsigned(ComponentI) + resize(DitherI((LUT_AMPL_PREC-OUT_WIDTH-1) downto 0), ComponentI'length));
 		end if;
 		
-		IxDN <= std_logic_vector(ComponentI((LUT_AMPL_PREC - 1)  downto (LUT_AMPL_PREC - OUT_WIDTH)));
+-- 		IxDN <= std_logic_vector(ComponentI((LUT_AMPL_PREC - 1)  downto (LUT_AMPL_PREC - OUT_WIDTH)));
 	end process p_comb_taylor_i;
 	
 	
@@ -453,41 +456,44 @@ begin
 -- 		return tmp((x'length - 1) downto 0);
 -- 	end function twos_complement;
 
-	p_comb_dither_add : process (TaylorCorrectedIxD, DitherNoisexD)
+	p_comb_dither_add : process (TaylorCorrectedIxD, DitherNoiseOutxD)
 		variable Val		: signed((LUT_AMPL_PREC - 1) downto 0);
 		variable Dither		: signed((LUT_AMPL_PREC - 1) downto 0);
 		variable Sum		: signed((LUT_AMPL_PREC - 1) downto 0);
 	begin
 		Val		:= signed(TaylorCorrectedIxD);
-		Dither	:= signed(resize(unsigned(DitherNoisexD((LUT_AMPL_PREC - OUT_WIDTH - 1) downto 0)), Dither'length));
+		Dither	:= signed(resize(unsigned(DitherNoiseOutxD), Dither'length));
 		Sum		:= Val + Dither;
 		
-		-- saturate if a was positive and sum overflowed
-		if Val(Val'length - 1) = '0' and Sum(Sum'length - 1) = '1' then 
-			Sum := (1 => '0', others => '1');
-		end if;
-	end process;
+		-- saturate if a was positive and sum overflowed (both versions work)
+		if Val(Val'left) = '0' and Sum(Sum'left) = '1' then
+-- 			Sum := "0" & (Sum'left-1 downto 0 => '1');
+			Sum := to_signed(2**(LUT_AMPL_PREC-1) - 1, LUT_AMPL_PREC);
+		end if;	
+		
+		IxDN <= std_logic_vector(Sum(Sum'left downto (LUT_AMPL_PREC - OUT_WIDTH)));
+	end process p_comb_dither_add;
 
 
-	AxD <= "0111111111111101";
-	BxD <=             "0001";
-	
-	-- "simple" saturation logic as DitherNoisexD is always positive -> we only have to check for positive overflows
-	p_comb_sat_add : process (AxD, BxD)
-		variable a		: signed(AxD'length - 1 downto 0);
-		variable b		: signed(AxD'length - 1 downto 0);
-		variable sum	: signed(AxD'length - 1 downto 0);
-	begin
-		a	:= signed(AxD);
-		b	:= signed(resize(unsigned(BxD), b'length));
-		sum	:= a + b;
-		
-		if a(a'length - 1) = '0' and sum(sum'length - 1) = '1' then -- if a was positive and sum overflowd
-			sum := "0111111111111111";
-		end if;
-		
-		SumxD <= "0" & std_logic_vector(sum);
-		Sum2xD <= std_logic_Vector(sum);
+-- 	AxD <= "0111111111111111";
+-- 	AxD <= (15 => '0', others => '1');
+-- 	BxD <=             "0011";
+-- 	
+-- 	-- "simple" saturation logic as DitherNoisexD is always positive -> we only have to check for positive overflows
+-- 	p_comb_sat_add : process (AxD, BxD)
+-- 		variable a		: signed(AxD'length - 1 downto 0);
+-- 		variable b		: signed(AxD'length - 1 downto 0);
+-- 		variable sum	: signed(AxD'length - 1 downto 0);
+-- 	begin
+-- 		a	:= signed(AxD);
+-- 		b	:= signed(resize(unsigned(BxD), b'length));
+-- 		sum	:= a + b;
+-- 		
+-- 		if a(a'length - 1) = '0' and sum(sum'length - 1) = '1' then -- if a was positive and sum overflowd
+-- 			sum := "0111111111111111";
+-- 		end if;
+-- 		
+-- 		SumxD <= "0" & std_logic_vector(sum);
 		
 	
 -- 		a := resize(signed(AxD), a'length);
@@ -495,7 +501,7 @@ begin
 -- 		sum := a + b;
 -- 		SumxD <= "0" & std_logic_vector(sum);
 -- 		Sum2xD <= std_logic_Vector(sum(15 downto 0));
-	end process p_comb_sat_add;
+-- 	end process p_comb_sat_add;
 	
 	
 		

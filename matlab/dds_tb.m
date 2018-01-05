@@ -1,7 +1,5 @@
 %% Parameters for DDS
 len = 1000;                             % number of samples to be generated from dds
-lfsr_seed = floor(rand(1) * (pow2(32) - 1));   % random seed for lfsr
-lfsr_poly  = [32 22 2 1];               % polynomial for lfsr
 
 DITHERING = false;           % enable phase_acc dithering
 TAYLOR = true;              % enable taylor series exapansion of LUT values
@@ -14,6 +12,13 @@ N_lut = 16;         % number of data bis in LUT
 N_adc = 12;         % number of bits of the ADC
 N_phase = 32;       % number of bits for phase accumulator
 N_lfsr = 32;        % number of bits for the lfsr (psrn generator)
+
+%lfsr
+lfsr_poly  = [32 22 2 1];               % polynomial for lfsr
+% lfsr_seed = floor(rand(1) * (pow2(32) - 1));   % random seed for lfsr
+lfsr_seed = 12364;
+tmp = lfsr(lfsr_seed, lfsr_poly, N_lfsr, N_lfsr, 3); % account for latency (i.e. use other seed)
+lfsr_seed = tmp(end);
 
 %frequency parameters
 F_clk = 150e6;                  % clock frequency (150MHz -> max synthesizable frequency is 75MHz)
@@ -104,6 +109,7 @@ end
 
 if N_lut > N_adc
     dither_noise = lfsr(lfsr_seed, lfsr_poly, N_lfsr, N_lut - N_adc, len)';
+%     dither_noise_lfsr = lfsr(lfsr_seed, lfsr_poly, N_lfsr, 32, len)';
 %     dither_noise = bin_usgn_to_sgn(dither_noise, N_lut - N_adc + 1);
 %     dither_noise = floor(rand(1, len) * pow2(N_lut - N_adc));
 %     dither_noise = zeros(size(dds_out_sin));

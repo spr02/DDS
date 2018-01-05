@@ -169,7 +169,8 @@ begin
 		
 		wait until rising_edge(RstxRB);
 		
-		--acount for latency of LUT (2) and logic (2)
+		--acount for latency of LUT (2) taylor(2) and dithering (1)
+		wait until rising_edge(ClkxC);
 		wait until rising_edge(ClkxC);
 		wait until rising_edge(ClkxC);
 		wait until rising_edge(ClkxC);
