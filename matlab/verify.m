@@ -1,12 +1,22 @@
+params = struct();
+
 %get the hdl output
-hdl_out_log
+hdl_out_log;
 
 %run the dds testbench
-dds_tb
+ref_dds_out = dds(params);
 
 %ouput
-sum(hdl_out(:, 1) == dds_out_cos')
-sum(hdl_out(:, 2) == dds_out_sin')
+real_match = sum(hdl_dds_out(:, 1) == real(ref_dds_out)')
+imag_match = sum(hdl_dds_out(:, 2) == imag(ref_dds_out)')
+
+if real_match == params.len && imag_match == params.len
+    disp("All values matched.");
+else
+    str = ['Only ', num2str(real_match), ' real samples and ',...
+        num2str(imag_match), 'imaginary sample out of ', num2str(params.len), ' complex samples matched.'];
+    disp(str);
+end
 
 %correction
 % sum(hdl_out(:, 1) == correction_cos')

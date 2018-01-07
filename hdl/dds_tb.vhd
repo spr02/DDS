@@ -28,12 +28,10 @@ architecture behav of dds_tb is
 			RstxRBI				: in  std_logic;
 			
 			TaylorEnxSI			: in  std_logic;
-	-- 		TaylorAutoxSI	: in  std_logic; --needed???
 			
 			TruncDithEnxSI		: in std_logic;
 			
-	-- 		DitherAutoxSI	: in  std_logic; --needed???
-			PhaseDithgEnxSI		: in  std_logic;
+			PhaseDithEnxSI		: in  std_logic;
 			PhaseDithMasksxSI	: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
 			
 			PhixDI				: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
@@ -44,6 +42,43 @@ architecture behav of dds_tb is
 			IxDO				: out std_logic_vector((OUT_WIDTH - 1) downto 0)
 		);
 	end component;
+	
+	function param_slv_to_matlab_log (name : string; x : std_logic_vector) return line is
+		variable LogLine : line;
+	begin
+		write(LogLine, string'("params."));
+		write(LogLine, name);
+		write(LogLine, string'(" = "));
+		write(LogLine, integer'image(to_integer(unsigned(x))));
+		write(LogLine, string'(";"));
+		return LogLine;
+	end function param_slv_to_matlab_log;
+	
+	function param_int_to_matlab_log (name : string; x : integer) return line is
+		variable LogLine : line;
+	begin
+		write(LogLine, string'("params."));
+		write(LogLine, name);
+		write(LogLine, string'(" = "));
+		write(LogLine, integer'image(x));
+		write(LogLine, string'(";"));
+		return LogLine;
+	end function param_int_to_matlab_log;
+	
+	function param_sl_to_matlab_log (name : string; x : std_logic) return line is
+		variable LogLine : line;
+	begin
+		write(LogLine, string'("params."));
+		write(LogLine, name);
+		write(LogLine, string'(" = "));
+		if x = '1' then
+			write(LogLine, string'("true"));
+		else
+			write(LogLine, string'("false"));
+		end if;
+		write(LogLine, string'(";"));
+		return LogLine;
+	end function param_sl_to_matlab_log;
 	
 	--------------------------------------------------------------------------------------
 	-- Signals
@@ -78,7 +113,7 @@ architecture behav of dds_tb is
 
 	signal TruncDithEnxS	: std_logic;
 			
-	signal PhaseDithgEnxS	: std_logic;
+	signal PhaseDithEnxS	: std_logic;
 	signal PhaseDithMasksxS	: std_logic_vector((PHASE_WIDTH - 1) downto 0);
 			
 
@@ -115,7 +150,7 @@ begin
 		
 		TruncDithEnxSI		=> TruncDithEnxS,
 		
-		PhaseDithgEnxSI		=> PhaseDithgEnxS,
+		PhaseDithEnxSI		=> PhaseDithEnxS,
 		PhaseDithMasksxSI	=> PhaseDithMasksxS,
 		
 		PhixDI				=> PhiInxD,
@@ -157,15 +192,15 @@ begin
 		variable LogLine : line;
 	begin
 		TaylorEnxS			<= '1';
-		TruncDithEnxS		<= '0';
-		PhaseDithgEnxS		<= '0';
+		TruncDithEnxS		<= '1';
+		PhaseDithEnxS		<= '0';
 		PhaseDithMasksxS	<= (others => '0');
 		
 		PhiInxD				<= (others => '0');
--- 		FTWxD				<= "00000001000000000000000000000000"; 
+		FTWxD				<= "00000001000000000000000000000000"; 
 -- 		FTWxD				<= "00000001111111111111111111111111"; 
 -- 		FTWxD				<= "00000001000000000000000000000001"; 
-		FTWxD				<= std_logic_vector(to_unsigned(901943132, 32));
+-- 		FTWxD				<= sftd_logic_vector(to_unsigned(901943132, 32));
 		
 		wait until rising_edge(RstxRB);
 		
@@ -177,33 +212,29 @@ begin
 		wait until rising_edge(ClkxC);
 		
 		-- write hdl configuration to matlab log file
-		write(LogLine, string'("N_lut_addr = "));
-		write(LogLine, integer'image(LUT_DEPTH));
-		write(LogLine, string'(";"));
+		LogLine := param_int_to_matlab_log("len", NUM_SAMPLES+1);
+		writeline(LOG_FILE, LogLine);
+		LogLine := param_sl_to_matlab_log("PHASE_DITHER", PhaseDithEnxS);
+		writeline(LOG_FILE, LogLine);
+		LogLine := param_sl_to_matlab_log("AMPL_DITHER", TruncDithEnxS);
+		writeline(LOG_FILE, LogLine);
+		LogLine := param_sl_to_matlab_log("TAYLOR", TaylorEnxS);
+		writeline(LOG_FILE, LogLine);	
+		LogLine := param_int_to_matlab_log("N_lut_addr", LUT_DEPTH);
 		writeline (LOG_FILE, LogLine);
-		write(LogLine, string'("N_lut = "));
-		write(LogLine, integer'image(LUT_AMPL_PREC));
-		write(LogLine, string'(";"));
+		LogLine := param_int_to_matlab_log("N_lut", LUT_AMPL_PREC);
 		writeline (LOG_FILE, LogLine);
-		write(LogLine, string'("N_adc = "));
-		write(LogLine, integer'image(OUT_WIDTH));
-		write(LogLine, string'(";"));
+		LogLine := param_int_to_matlab_log("N_adc", OUT_WIDTH);
 		writeline (LOG_FILE, LogLine);
-		write(LogLine, string'("N_phase = "));
-		write(LogLine, integer'image(PHASE_WIDTH));
-		write(LogLine, string'(";"));
+		LogLine := param_int_to_matlab_log("N_phase", PHASE_WIDTH);
 		writeline (LOG_FILE, LogLine);
-		write(LogLine, string'("N_lfsr = "));
-		write(LogLine, integer'image(LFSR_WIDTH));
-		write(LogLine, string'(";"));
+		LogLine := param_int_to_matlab_log("N_lfsr", LFSR_WIDTH);
 		writeline (LOG_FILE, LogLine);
-		write(LogLine, string'("FTW_0 = "));
-		write(LogLine, integer'image(to_integer(unsigned(FTWxD))));
-		write(LogLine, string'(";"));
-		writeline (LOG_FILE, LogLine);
+		LogLine := param_slv_to_matlab_log("FTW_0", FTWxD);
+		writeline(LOG_FILE, LogLine);
 		
 		-- write actual dds output data
-		write(LogLine, string'("hdl_out= [..."));
+		write(LogLine, string'("hdl_dds_out= [..."));
 		writeline (LOG_FILE, LogLine);
 		
 		for i in 0 to NUM_SAMPLES loop
@@ -244,47 +275,7 @@ begin
 		
 		wait;
 		
-		
---		 WrEnablexS  <= '0';
---		 ColxS	   <= (others => '0');
---		 RowxS	   <= (others => '0');
---		 EntryInxD   <= (others => '0');
---		 TransposexS <= '0';
---		 ColRowxS	<= (others => '0');
---		 OffsetxS	<= (others => '0');
---		 -----
---		 TransposexS <= '0';
---		 NextColxS <= '0';
---		 NextRowxS <= '0';
---		 PrevColxS <= '0';
---		 PrevRowxS <= '0';
---		 
---		 ------
---		 ColRowResetBxS <= '0';
---		 NextColBxS <= '0';
---		 NextRowBxS <= '0';
---		 
---		 ------
---		 RowResetAxS <= '0';
---		 NextRowAxS <= '0';
---		 ColAxS <= (others => '0');
---		 
---		 wait until rising_edge(RstxRB);
---		 wait until rising_edge(ClkxC);
---		 NextRowBxS <= '1';
---		 NextRowAxS <= '1';
---		 wait until rising_edge(ClkxC);
---		 wait until rising_edge(ClkxC);
---		 NextRowAxS <= '1';
---		 wait until rising_edge(ClkxC);
---		 wait until rising_edge(ClkxC);
---		 NextRowAxS <= '1';
---		 wait until rising_edge(ClkxC);
---		 NextRow
---		 
---		 wait;
-		
-		
+
 	end process p_gen_stimuli;
 	
 end behav;

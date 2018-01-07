@@ -29,12 +29,10 @@ entity dds_core is
 		RstxRBI				: in  std_logic;
 		
 		TaylorEnxSI			: in  std_logic;
--- 		TaylorAutoxSI	: in  std_logic; --needed???
 		
 		TruncDithEnxSI		: in std_logic;
-		
--- 		DitherAutoxSI	: in  std_logic; --needed???
-		PhaseDithgEnxSI		: in  std_logic;
+		 
+		PhaseDithEnxSI		: in  std_logic;
 		PhaseDithMasksxSI	: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
 		
 		PhixDI				: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
@@ -308,7 +306,7 @@ begin
 	-- ProcessName: p_comb_phase_accumulator_logic
 	-- This process implements the accumulator logic with an optional addition of dithering noise.
 	--------------------------------------------
-	p_comb_phase_accumulator_logic : process(PhaseAccxDP, FTWxDI, PhaseDithgEnxSI, PhaseDithMasksxSI, DitherNoisexD)
+	p_comb_phase_accumulator_logic : process(PhaseAccxDP, FTWxDI, PhaseDithEnxSI, PhaseDithMasksxSI, DitherNoisexD)
 		variable PhaseAcc		: unsigned((PhaseAccxDP'length - 1) downto 0);
 		variable Ftw			: unsigned((FTWxDI'length - 1) downto 0);
 		variable DitherNoise 	: unsigned((DitherNoisexD'length - 1) downto 0);
@@ -317,7 +315,7 @@ begin
 		Ftw			:= unsigned(FTWxDI);
 		DitherNoise	:= unsigned(PhaseDithMasksxSI and DitherNoisexD);
 		
-		if (PhaseDithgEnxSI = '1') then
+		if (PhaseDithEnxSI = '1') then
 			PhaseAcc := PhaseAcc + Ftw + DitherNoise;
 		else
 			PhaseAcc := PhaseAcc + Ftw;

@@ -18,3 +18,4 @@ clean distclean::
 	ghdl --clean
 	ghdl --remove
 	rm -rf *.fst
+	rm -rf ../matlab/hdl_out_log.m
