@@ -8,6 +8,7 @@ SRC=\
 	dither.vhd\
 	noise_shaper.vhd\
 	dds_core.vhd\
+	dds.vhd\
 	lut_tb.vhd\
 	dds_tb.vhd
 clock : $(SRC)

@@ -12,25 +12,26 @@ architecture behav of dds_tb is
 	--------------------------------------------------------------------------------------
 	-- Components to be tested
 	--------------------------------------------------------------------------------------
-	component dds_core is
+	component dds is
 		generic(
-			LUT_DEPTH		: integer := 8;					-- number of lut address bits
-			LUT_AMPL_PREC	: integer := 16;				-- number of databits stored in LUT for amplitude
-			LUT_GRAD_PREC	: integer := 5;					-- number of databist stored in LUT for gradient (slope)
-			PHASE_WIDTH		: integer := 32;				-- number of bits of phase accumulator
-			LFSR_WIDTH		: integer := 32;				-- number of bits used for the LFSR/PNGR
-            LFSR_POLY       : std_logic_vector := "111";	-- polynomial of the LFSR/PNGR
-			LFSR_SEED		: integer := 12364;				-- seed for LFSR
-			OUT_WIDTH		: integer := 12					-- number of bits actually output (should be equal to DAC bits)
+			LUT_DEPTH		: integer := 8;		-- number of lut address bits
+			LUT_AMPL_PREC	: integer := 16;	-- number of databits stored in LUT for amplitude
+			LUT_GRAD_PREC	: integer := 5;		-- number of databist stored in LUT for gradient (slope)
+			PHASE_WIDTH		: integer := 32;	-- number of bits of phase accumulator
+			LFSR_WIDTH		: integer := 32;	-- number of bits used for the LFSR/PNGR
+			LFSR_POLY       : std_logic_vector := "111"; -- polynomial of the LFSR/PNGR
+			LFSR_SEED		: integer := 12364;	-- seed for LFSR
+			OUT_WIDTH		: integer := 12		-- number of bits actually output (should be equal to DAC bits)
 		);
 		port(
 			ClkxCI				: in  std_logic;
 			RstxRBI				: in  std_logic;
 			
 			TaylorEnxSI			: in  std_logic;
+	-- 		TaylorAutoxSI	: in  std_logic; --needed???
 			
 			TruncDithEnxSI		: in std_logic;
-			
+	-- 		DitherAutoxSI	: in  std_logic; --needed???
 			PhaseDithEnxSI		: in  std_logic;
 			PhaseDithMasksxSI	: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
 			
@@ -131,7 +132,7 @@ begin
 	--	  INSTANTIATE Component
 	------------------------------------------------
 	
-	I0 : dds_core
+	I0 : dds
 	generic map(
 		LUT_DEPTH		=> LUT_DEPTH,		-- number of lut address bits
 		LUT_AMPL_PREC	=> LUT_AMPL_PREC,	-- number of databits stored in LUT for amplitude
@@ -192,7 +193,7 @@ begin
 		variable LogLine : line;
 	begin
 		TaylorEnxS			<= '1';
-		TruncDithEnxS		<= '1';
+		TruncDithEnxS		<= '0';
 		PhaseDithEnxS		<= '0';
 		PhaseDithMasksxS	<= (others => '0');
 		
@@ -200,7 +201,7 @@ begin
 		FTWxD				<= "00000001000000000000000000000000"; 
 		FTWxD				<= "00000001111111111111111111111111"; 
 -- 		FTWxD				<= "00000001000000000000000000000001"; 
-		FTWxD				<= std_logic_vector(to_unsigned(901943132, 32));
+-- 		FTWxD				<= std_logic_vector(to_unsigned(901943132, 32));
 		
 		wait until rising_edge(RstxRB);
 		
