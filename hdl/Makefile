@@ -2,6 +2,7 @@ SRC=\
 	helper_util.vhd\
 	delay_line.vhd\
 	cplx_lut.vhd\
+	cplx_grad_lut.vhd\
 	lfsr.vhd\
 	taylor.vhd\
 	dither.vhd\

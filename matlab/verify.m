@@ -3,6 +3,8 @@ params = struct();
 %get the hdl output
 hdl_out_log;
 
+params
+
 %run the dds testbench
 ref_dds_out = dds(params);
 

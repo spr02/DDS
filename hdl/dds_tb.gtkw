@@ -1,10 +1,10 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Wed Jan 10 13:43:54 2018
+[*] Sat Jan 13 10:11:25 2018
 [*]
 [dumpfile] "/home/jannik/git/DDS/hdl/dds_tb.fst"
-[dumpfile_mtime] "Wed Jan 10 13:42:43 2018"
-[dumpfile_size] 128357
+[dumpfile_mtime] "Sat Jan 13 10:10:47 2018"
+[dumpfile_size] 225474
 [savefile] "/home/jannik/git/DDS/hdl/dds_tb.gtkw"
 [timestart] 0
 [size] 1920 1015
@@ -37,18 +37,13 @@ i0.lut0amplixdp[15:0]
 i0.lut0amplqxdp[15:0]
 i0.slopeixd[15:0]
 i0.slopeqxd[15:0]
-@24
-i0.corrixdp[15:0]
-i0.corrqxdp[15:0]
 @200
 -
-@420
-i0.taylorcorrectedixd[15:0]
-i0.tmp[11:0]
+@421
 ixd[11:0]
+@420
 i0.ditheredamplixd[11:0]
 qxd[11:0]
-@421
 i0.ditheredamplqxd[11:0]
 @200
 -
