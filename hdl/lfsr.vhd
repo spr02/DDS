@@ -26,7 +26,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 use ieee.numeric_std.all;
 
 
-entity LFSR is
+entity psnr_lfsr is
 		generic(
 			RND_WIDTH		: integer := 9;
 			INITIAL_SEED	: integer := 13;
@@ -45,10 +45,10 @@ entity LFSR is
 			-- output
 			RndOutxDO	: out	std_logic_vector((RND_WIDTH - 1) downto 0)
 		);
-end LFSR;
+end psnr_lfsr;
 
 
-architecture rtl of LFSR is
+architecture rtl of psnr_lfsr is
 	------------------------------------------------
 	--	Signals
 	------------------------------------------------	
@@ -71,7 +71,7 @@ begin
 				end if;
 			end if;
 		end if;
-	end process p_sync;
+	end process;
 
 	------------------------------------------------
 	--	Combinatorical process (feed back logic)
@@ -95,7 +95,7 @@ begin
 				RndOutxDN(I - 1) <= RndOutxDP(I);
 			end if;
 		end loop;
-	end process p_comb_FEED_BACK;
+	end process;
 
 
 	------------------------------------------------

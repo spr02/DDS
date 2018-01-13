@@ -48,49 +48,6 @@ end dds_core;
 
 architecture arch of dds_core is
 	------------------------------------------------------------------------------------------------
-	--	Componentes
-	------------------------------------------------------------------------------------------------
-	component trig_lut is
-	generic(
-		LUT_DEPTH		: integer := 8;
-		LUT_AMPL_PREC	: integer := 16
-	);
-	port(
-		ClkxCI			: in  std_logic;
-		RstxRBI			: in  std_logic;
-		
-		PhasexDI		: in  std_logic_vector((LUT_DEPTH - 1) downto 0);
-		
-		SinxDO			: out std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
-		CosxDO			: out std_logic_vector((LUT_AMPL_PREC - 1) downto 0)
-	);
-	end component;
-	
-	component LFSR is
-		generic(
-			RND_WIDTH		: integer := 9;
-			INITIAL_SEED	: integer := 13;
-			LFSR_POLY		: std_logic_vector := "000010000"
-		);
-		port(
-			ClkxCI      : in	std_logic;
-			RstxRBI     : in	std_logic;
-
-            EnablexSI   : in    std_logic;
-            
-			-- load seed
-			LoadxSI		: in	std_logic;
-			SeedxDI		: in	std_logic_vector((RND_WIDTH - 1) downto 0);
-
-			-- output
-			RndOutxDO	: out	std_logic_vector((RND_WIDTH - 1) downto 0)
-		);
-	end component;
-	
-
-
-
-	------------------------------------------------------------------------------------------------
 	--	Signals and types
 	------------------------------------------------------------------------------------------------
 
@@ -136,7 +93,7 @@ begin
 		GradQxDO		=> SlopeQxD
 	);
 	
-	LFSR0 : entity work.LFSR(rtl)
+	LFSR0 : entity work.psnr_lfsr(rtl)
 	generic map(
 		RND_WIDTH		=> LFSR_WIDTH,
 		INITIAL_SEED	=> LFSR_SEED,
@@ -252,7 +209,6 @@ begin
 		
 		PhaseAccxDN <= std_logic_vector(PhaseAcc);
 	end process;
-	
 	
 
 	------------------------------------------------------------------------------------------------
