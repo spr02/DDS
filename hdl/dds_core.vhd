@@ -114,6 +114,7 @@ architecture arch of dds_core is
 		port(
 			ClkxCI				: in  std_logic;
 			RstxRBI				: in  std_logic;
+			TaylorEnxSI			: in  std_logic;
 			
 			AmplxDI				: in  std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
 			SlopexDI			: in  std_logic_vector((LUT_GRAD_PREC - 1) downto 0);
@@ -122,7 +123,28 @@ architecture arch of dds_core is
 			AmplxDO				: out std_logic_vector((OUT_WIDTH - 1) downto 0)
 		);
 	end component;
+	
+-- 	component psnr_dither is
+-- 	generic(
+-- 		LUT_AMPL_PREC	: integer := 16;	-- number of databits stored in LUT for amplitude
+-- 		DITHER_WIDTH	: integer := 4;
+-- 		OUT_WIDTH		: integer := 12		-- number of bits actually output (should be equal to DAC bits)
+-- 	);
+-- 	port(
+-- 		ClkxCI				: in  std_logic;
+-- 		RstxRBI				: in  std_logic;
+-- 		DitherEnxSI			: in  std_logic;
+-- 		
+-- 		AmplxDI				: in  std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
+-- 		DitherNoisexDI		: in  std_logic_vector((DITHER_WIDTH - 1) downto 0);
+-- 		
+-- 		AmplxDO				: out std_logic_vector((OUT_WIDTH - 1) downto 0)
+-- 	);
+-- 	end component;
 
+
+-- 	use work.psnr_dither;										-- fsm used to control read and write actions to the configuration memory
+-- 	for all: psnr_dither use entity work.psnr_dither(arch);
 
 	------------------------------------------------------------------------------------------------
 	--	Signals and types
@@ -155,6 +177,8 @@ architecture arch of dds_core is
 	-- output signals
 	signal TaylorCorrectedIxD			: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
 	signal TaylorCorrectedQxD			: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
+	signal DitheredAmplIxD				: std_logic_vector((OUT_WIDTH - 1) downto 0);
+	signal DitheredAmplQxD				: std_logic_vector((OUT_WIDTH - 1) downto 0);
 	signal tmp							: std_logic_vector((OUT_WIDTH - 1) downto 0);
 	signal QxDN, QxDP					: std_logic_vector((OUT_WIDTH - 1) downto 0);
 	signal IxDN, IxDP 					: std_logic_vector((OUT_WIDTH - 1) downto 0);
@@ -219,6 +243,7 @@ begin
 		OutputxDO		=> PhaseGradxDP
 	);
 	
+
 	TAYLOR_I : taylor_interpolation
 	generic map(
 		LUT_AMPL_PREC	=> LUT_AMPL_PREC,		-- number of databits stored in LUT for amplitude
@@ -230,6 +255,7 @@ begin
 	port map(
 		ClkxCI		=> ClkxCI,
 		RstxRBI		=> RstxRBI,
+		TaylorEnxSI	=> TaylorEnxSI,
 		AmplxDI		=> Lut0AmplIxDN,
 		SlopexDI	=> SlopeIxD,
 		GradxDI		=> PhaseGradxDP,
@@ -247,6 +273,7 @@ begin
 	port map(
 		ClkxCI		=> ClkxCI,
 		RstxRBI		=> RstxRBI,
+		TaylorEnxSI	=> TaylorEnxSI,
 		AmplxDI		=> Lut0AmplQxDN,
 		SlopexDI	=> SlopeQxD,
 		GradxDI		=> PhaseGradxDP,
@@ -254,6 +281,39 @@ begin
 	);
 	
 	tmp <= TaylorCorrectedIxD(15 downto 4);
+	
+	DITHER_I : entity work.psnr_dither(arch)
+	generic map(
+		LUT_AMPL_PREC	=> LUT_AMPL_PREC,
+		DITHER_WIDTH	=> LUT_AMPL_PREC - OUT_WIDTH,
+		OUT_WIDTH		=> OUT_WIDTH
+	)
+	port map(
+		ClkxCI				=> ClkxCI,
+		RstxRBI				=> RstxRBI,
+		DitherEnxSI			=> TruncDithEnxSI,
+		AmplxDI				=> TaylorCorrectedIxD,
+		DitherNoisexDI		=> DitherNoiseAmplxD,
+		AmplxDO				=> DitheredAmplIxD
+	);
+	
+	DITHER_Q : entity work.psnr_dither(arch)
+	generic map(
+		LUT_AMPL_PREC	=> LUT_AMPL_PREC,
+		DITHER_WIDTH	=> LUT_AMPL_PREC - OUT_WIDTH,
+		OUT_WIDTH		=> OUT_WIDTH
+	)
+	port map(
+		ClkxCI				=> ClkxCI,
+		RstxRBI				=> RstxRBI,
+		DitherEnxSI			=> TruncDithEnxSI,
+		AmplxDI				=> TaylorCorrectedQxD,
+		DitherNoisexDI		=> DitherNoiseAmplxD,
+		AmplxDO				=> DitheredAmplQxD
+	);
+	
+-- 	IxDN <= DitheredAmplIxD;
+-- 	QxDN <= DitheredAmplQxD;
 
 	------------------------------------------------------------------------------------------------
 	--	Synchronus process (sequential logic and registers)
@@ -407,43 +467,43 @@ begin
 -- 	end process p_comb_taylor_q;
 	
 	
-	p_comb_dither_add_i : process (TaylorCorrectedIxD, DitherNoiseAmplxD)
-		variable Val		: signed((LUT_AMPL_PREC - 1) downto 0);
-		variable Dither		: signed((LUT_AMPL_PREC - 1) downto 0);
-		variable Sum		: signed((LUT_AMPL_PREC - 1) downto 0);
-		constant tmp		: natural := 15;
-	begin
-		Val		:= signed(TaylorCorrectedIxD);
-		Dither	:= signed(resize(unsigned(DitherNoiseAmplxD), Dither'length));
-		Sum		:= Val + Dither;
-		
-		-- saturate if a was positive and sum overflowed (both versions work)
-		if Val(Val'left) = '0' and Sum(Sum'left) = '1' then
--- 			Sum := "0" & (Sum'left-1 downto 0 => '1');
-			Sum := (tmp => '1', others => '0');
-			Sum := to_signed(2**(LUT_AMPL_PREC-1) - 1, LUT_AMPL_PREC);
-		end if;	
-		
-		IxDN <= std_logic_vector(Sum(Sum'left downto (LUT_AMPL_PREC - OUT_WIDTH)));
-	end process p_comb_dither_add_i;
+-- 	p_comb_dither_add_i : process (TaylorCorrectedIxD, DitherNoiseAmplxD)
+-- 		variable Val		: signed((LUT_AMPL_PREC - 1) downto 0);
+-- 		variable Dither		: signed((LUT_AMPL_PREC - 1) downto 0);
+-- 		variable Sum		: signed((LUT_AMPL_PREC - 1) downto 0);
+-- 		constant tmp		: natural := 15;
+-- 	begin
+-- 		Val		:= signed(TaylorCorrectedIxD);
+-- 		Dither	:= signed(resize(unsigned(DitherNoiseAmplxD), Dither'length));
+-- 		Sum		:= Val + Dither;
+-- 		
+-- 		-- saturate if a was positive and sum overflowed (both versions work)
+-- 		if Val(Val'left) = '0' and Sum(Sum'left) = '1' then
+-- -- 			Sum := "0" & (Sum'left-1 downto 0 => '1');
+-- 			Sum := (tmp => '1', others => '0');
+-- 			Sum := to_signed(2**(LUT_AMPL_PREC-1) - 1, LUT_AMPL_PREC);
+-- 		end if;	
+-- 		
+-- 		IxDN <= std_logic_vector(Sum(Sum'left downto (LUT_AMPL_PREC - OUT_WIDTH)));
+-- 	end process p_comb_dither_add_i;
 	
-	p_comb_dither_add_q : process (TaylorCorrectedQxD, DitherNoiseAmplxD)
-		variable Val		: signed((LUT_AMPL_PREC - 1) downto 0);
-		variable Dither		: signed((LUT_AMPL_PREC - 1) downto 0);
-		variable Sum		: signed((LUT_AMPL_PREC - 1) downto 0);
-	begin
-		Val		:= signed(TaylorCorrectedQxD);
-		Dither	:= signed(resize(unsigned(DitherNoiseAmplxD), Dither'length));
-		Sum		:= Val + Dither;
-		
-		-- saturate if a was positive and sum overflowed (both versions work)
-		if Val(Val'left) = '0' and Sum(Sum'left) = '1' then
--- 			Sum := "0" & (Sum'left-1 downto 0 => '1');
-			Sum := to_signed(2**(LUT_AMPL_PREC-1) - 1, LUT_AMPL_PREC);
-		end if;	
-		
-		QxDN <= std_logic_vector(Sum(Sum'left downto (LUT_AMPL_PREC - OUT_WIDTH)));
-	end process p_comb_dither_add_q;
+-- 	p_comb_dither_add_q : process (TaylorCorrectedQxD, DitherNoiseAmplxD)
+-- 		variable Val		: signed((LUT_AMPL_PREC - 1) downto 0);
+-- 		variable Dither		: signed((LUT_AMPL_PREC - 1) downto 0);
+-- 		variable Sum		: signed((LUT_AMPL_PREC - 1) downto 0);
+-- 	begin
+-- 		Val		:= signed(TaylorCorrectedQxD);
+-- 		Dither	:= signed(resize(unsigned(DitherNoiseAmplxD), Dither'length));
+-- 		Sum		:= Val + Dither;
+-- 		
+-- 		-- saturate if a was positive and sum overflowed (both versions work)
+-- 		if Val(Val'left) = '0' and Sum(Sum'left) = '1' then
+-- -- 			Sum := "0" & (Sum'left-1 downto 0 => '1');
+-- 			Sum := to_signed(2**(LUT_AMPL_PREC-1) - 1, LUT_AMPL_PREC);
+-- 		end if;	
+-- 		
+-- 		QxDN <= std_logic_vector(Sum(Sum'left downto (LUT_AMPL_PREC - OUT_WIDTH)));
+-- 	end process p_comb_dither_add_q;
 	
 	
 	
@@ -451,7 +511,7 @@ begin
 	--	Output Assignment
 	------------------------------------------------------------------------------------------------
 	PhixDO	<= PhaseAccxDP;		-- phase accumulator
-	QxDO	<= QxDP;			-- sine or Q component
-	IxDO	<= IxDP;			-- cosine or I component
+	IxDO	<= DitheredAmplIxD;			-- cosine or I component
+	QxDO	<= DitheredAmplQxD;			-- sine or Q component
 
 end arch;

@@ -4,6 +4,8 @@ SRC=\
 	cplx_lut.vhd\
 	lfsr.vhd\
 	taylor.vhd\
+	dither.vhd\
+	noise_shaper.vhd\
 	dds_core.vhd\
 	lut_tb.vhd\
 	dds_tb.vhd

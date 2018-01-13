@@ -200,7 +200,7 @@ begin
 		FTWxD				<= "00000001000000000000000000000000"; 
 -- 		FTWxD				<= "00000001111111111111111111111111"; 
 -- 		FTWxD				<= "00000001000000000000000000000001"; 
--- 		FTWxD				<= sftd_logic_vector(to_unsigned(901943132, 32));
+		FTWxD				<= std_logic_vector(to_unsigned(901943132, 32));
 		
 		wait until rising_edge(RstxRB);
 		

@@ -1,6 +1,6 @@
 -- ----------------------------------------------------------------------------	
--- FILE:	dds_core.vhd
--- DESCRIPTION:	Serial configuration interface to control DDS and signal generator modules
+-- FILE:	taylor.vhd
+-- DESCRIPTION:	Module that does a linear interpolation of the input, given a slope and a gradiend.
 -- DATE:	December 24, 2017
 -- AUTHOR(s):	Jannik Springer (jannik.springer@rwth-aachen.de)
 -- REVISIONS:	
@@ -24,6 +24,7 @@ entity taylor_interpolation is
 	port(
 		ClkxCI				: in  std_logic;
 		RstxRBI				: in  std_logic;
+		TaylorEnxSI			: in  std_logic;
 		
 		AmplxDI				: in  std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
 		SlopexDI			: in  std_logic_vector((LUT_GRAD_PREC - 1) downto 0);
@@ -44,6 +45,7 @@ architecture arch of taylor_interpolation is
 	signal AmplInxDP			: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
 
 	-- output signal buffer
+	signal AmplCorrectedxD		: std_logic_vector((OUT_WIDTH - 1) downto 0);
 	signal AmplxDN, AmplxDP		: std_logic_vector((OUT_WIDTH - 1) downto 0);
 begin
 	
@@ -53,8 +55,8 @@ begin
 	------------------------------------------------------------------------------------------------
 	
 	--------------------------------------------
-    -- ProcessName: p_sync_phase_accumulator
-    -- This process implements the phase accumulator.
+    -- ProcessName: p_sync_registersome registers
+    -- This process implements s.
     --------------------------------------------
 	p_sync_registers : process(ClkxCI, RstxRBI)
 	begin
@@ -67,7 +69,7 @@ begin
 			AmplxDP			<= AmplxDN;
 			AmplInxDP		<= AmplxDI;	-- delay AmplxDI by one cylce to account for latency of multiplier
 		end if;
-	end process p_sync_registers;
+	end process;
 	
 
 	
@@ -92,7 +94,7 @@ begin
 	
 		Correction		:= LutSlope * PhaseGrad;
 		CorrxDN			<= std_logic_vector(Correction(PosMSB downto PosLSB));
-	end process p_comb_correction;
+	end process;
 	
 	--------------------------------------------
     -- ProcessName: p_comb_taylor
@@ -109,8 +111,22 @@ begin
 	
 		CorrAmpl	:= LutAmpl + Correction;
 
-		AmplxDN <= std_logic_vector(CorrAmpl(CorrAmpl'left  downto (LUT_AMPL_PREC - OUT_WIDTH)));
-	end process p_comb_taylor;
+		AmplCorrectedxD <= std_logic_vector(CorrAmpl(CorrAmpl'left  downto (LUT_AMPL_PREC - OUT_WIDTH)));
+	end process;
+	
+	--------------------------------------------
+    -- ProcessName: p_comb_mux_taylor
+    -- This process implements an multiplexer that forwards either the corrected amplitude or
+    -- simply the input value.
+    --------------------------------------------
+	p_comb_mux_taylor : process(TaylorEnxSI, AmplxDI, AmplInxDP)
+	begin
+		if TaylorEnxSI = '1' then
+			AmplxDN <= AmplCorrectedxD;
+		else
+			AmplxDN <= AmplInxDP(AmplInxDP'left downto (LUT_AMPL_PREC - OUT_WIDTH));
+		end if;
+	end process;
 
 	------------------------------------------------------------------------------------------------
 	--	Output Assignment

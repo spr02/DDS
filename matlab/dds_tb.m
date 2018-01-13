@@ -1,5 +1,5 @@
 %% Parameters for DDS
-params.len = 1024;                             % number of samples to be generated from dds
+params.len = 1000;                             % number of samples to be generated from dds
 
 params.PHASE_DITHER = false;       % enable phase_acc dithering
 params.AMPL_DITHER = true;         % enable amplitude dithering in case of truncation of dds_out
