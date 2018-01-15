@@ -119,7 +119,7 @@ begin
     -- This process implements an multiplexer that forwards either the corrected amplitude or
     -- simply the input value.
     --------------------------------------------
-	p_comb_mux_taylor : process(TaylorEnxSI, AmplxDI, AmplInxDP)
+	p_comb_mux_taylor : process(TaylorEnxSI, AmplCorrectedxD, AmplInxDP)
 	begin
 		if TaylorEnxSI = '1' then
 			AmplxDN <= AmplCorrectedxD;

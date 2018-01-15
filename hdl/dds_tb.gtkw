@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Sat Jan 13 11:32:22 2018
+[*] Mon Jan 15 14:28:36 2018
 [*]
 [dumpfile] "/home/jannik/git/DDS/hdl/dds_tb.fst"
-[dumpfile_mtime] "Sat Jan 13 11:28:05 2018"
-[dumpfile_size] 225550
+[dumpfile_mtime] "Mon Jan 15 14:23:02 2018"
+[dumpfile_size] 148287
 [savefile] "/home/jannik/git/DDS/hdl/dds_tb.gtkw"
 [timestart] 0
 [size] 1920 1015
 [pos] 2567 0
-*-26.221088 350000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-27.257809 582500000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] i0.
 [treeopen] i0.dds0.
 [treeopen] i0.dds0.noise_shaper_i.
@@ -21,9 +21,11 @@
 @28
 clkxc
 rstxrb
+enablexs
 @24
 ftwxd[31:0]
 i0.dds0.dithernoisexd[31:0]
+i0.dds0.phasegradxdp[21:0]
 @200
 -LUT
 @420
@@ -42,11 +44,13 @@ i0.dds0.noise_shaper_q.taylorcorrectedxd[15:0]
 -DITHER
 @24
 i0.dds0.noise_shaper_i.dither.dithernoisexdi[3:0]
-@421
+@420
 i0.dds0.noise_shaper_i.dither.amplditheredxd[11:0]
 i0.dds0.noise_shaper_q.dither.amplditheredxd[11:0]
 @200
 -OUTPUT
+@29
+validxs
 @420
 ixd[11:0]
 qxd[11:0]

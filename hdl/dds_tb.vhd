@@ -27,6 +27,8 @@ architecture behav of dds_tb is
 			ClkxCI				: in  std_logic;
 			RstxRBI				: in  std_logic;
 			
+			EnablexSI			: in  std_logic;
+			
 			TaylorEnxSI			: in  std_logic;
 	-- 		TaylorAutoxSI	: in  std_logic; --needed???
 			
@@ -38,6 +40,7 @@ architecture behav of dds_tb is
 			PhixDI				: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
 			FTWxDI				: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);		
 			
+			ValidxSO			: out std_logic;
 			PhixDO				: out std_logic_vector((PHASE_WIDTH - 1) downto 0);
 			QxDO				: out std_logic_vector((OUT_WIDTH - 1) downto 0);
 			IxDO				: out std_logic_vector((OUT_WIDTH - 1) downto 0)
@@ -109,6 +112,7 @@ architecture behav of dds_tb is
 -- 	signal AmplBxD					: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
 -- 	signal GradBxD					: std_logic_vector((LUT_GRAD_PREC - 1) downto 0);
 	
+	signal EnablexS			: std_logic;
 	
 	signal TaylorEnxS		: std_logic;
 
@@ -120,7 +124,8 @@ architecture behav of dds_tb is
 
 	signal PhiInxD			: std_logic_vector((PHASE_WIDTH - 1) downto 0);
 	signal FTWxD			: std_logic_vector((PHASE_WIDTH - 1) downto 0);		
-			
+	
+	signal ValidxS			: std_logic;
 	signal PhiOutxD			: std_logic_vector((PHASE_WIDTH - 1) downto 0);
 	signal QxD				: std_logic_vector((OUT_WIDTH - 1) downto 0);
 	signal IxD				: std_logic_vector((OUT_WIDTH - 1) downto 0);
@@ -147,6 +152,8 @@ begin
 		ClkxCI				=> ClkxC,
 		RstxRBI				=> RstxRB,
 		
+		EnablexSI			=> EnablexS,
+		
 		TaylorEnxSI			=> TaylorEnxS,
 		
 		TruncDithEnxSI		=> TruncDithEnxS,
@@ -157,6 +164,7 @@ begin
 		PhixDI				=> PhiInxD,
 		FTWxDI				=> FTWxD,
 		
+		ValidxSO			=> ValidxS,
 		PhixDO				=> PhiOutxD,
 		QxDO				=> QxD,
 		IxDO				=> IxD
@@ -184,6 +192,15 @@ begin
 		wait;
 	end process p_reset;
 
+	
+	p_sync_enable_signal : process(RstxRB, ClkxC)
+	begin
+		if RstxRB = '0' then
+			EnablexS <= '0';
+		elsif ClkxC'event and ClkxC = '1' then
+			EnablexS <= not EnablexS;
+		end if;
+	end process;
 
 	
 	------------------------------------------------

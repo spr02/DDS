@@ -28,6 +28,8 @@ entity dds is
 		ClkxCI				: in  std_logic;
 		RstxRBI				: in  std_logic;
 		
+		EnablexSI			: in  std_logic;
+		
 		TaylorEnxSI			: in  std_logic;
 -- 		TaylorAutoxSI	: in  std_logic; --needed???
 		
@@ -39,6 +41,7 @@ entity dds is
 		PhixDI				: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
 		FTWxDI				: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);		
 		
+		ValidxSO			: out std_logic;
 		PhixDO				: out std_logic_vector((PHASE_WIDTH - 1) downto 0);
 		QxDO				: out std_logic_vector((OUT_WIDTH - 1) downto 0);
 		IxDO				: out std_logic_vector((OUT_WIDTH - 1) downto 0)
@@ -53,6 +56,7 @@ architecture arch of dds is
 	------------------------------------------------------------------------------------------------
 
 	-- ouput signals
+	signal ValidxS					: std_logic;
 	signal IxD						: std_logic_vector((OUT_WIDTH - 1) downto 0);
 	signal QxD						: std_logic_vector((OUT_WIDTH - 1) downto 0);
 begin
@@ -73,6 +77,7 @@ begin
 	port map(
 		ClkxCI				=> ClkxCI,
 		RstxRBI				=> RstxRBI,
+		EnablexSI			=> EnablexSI,
 		TaylorEnxSI			=> TaylorEnxSI,
 		TruncDithEnxSI		=> TruncDithEnxSI,
 		PhaseDithEnxSI		=> PhaseDithEnxSI,
@@ -82,6 +87,20 @@ begin
 		PhixDO				=> PhixDO,
 		QxDO				=> QxD,
 		IxDO				=> IxD
+	);
+	
+	
+	DELAY_VALID0 : entity work.DelayLine(rtl)
+	generic map (
+		DELAY_WIDTH		=> 1,
+		DELAY_CYCLES	=> 4 -- four instead of five, since EnabelxSI already introduces one cycle delay
+	)
+	port map(
+		ClkxCI			=> ClkxCI,
+		RstxRBI			=> RstxRBI,
+		EnablexSI		=> '1',
+		InputxDI(0)		=> EnablexSI,
+		OutputxDO(0)	=> ValidxS
 	);
 
 	------------------------------------------------------------------------------------------------
@@ -157,7 +176,8 @@ begin
 	------------------------------------------------------------------------------------------------
 	--	Output Assignment
 	------------------------------------------------------------------------------------------------
-	QxDO	<= QxD;			-- sine or Q component
-	IxDO	<= IxD;			-- cosine or I component
+	ValidxSO	<= ValidxS;		-- valid signal for I and Q component
+	QxDO		<= QxD;			-- sine or Q component
+	IxDO		<= IxD;			-- cosine or I component
 
 end arch;

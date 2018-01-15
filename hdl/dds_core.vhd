@@ -28,6 +28,8 @@ entity dds_core is
 		ClkxCI				: in  std_logic;
 		RstxRBI				: in  std_logic;
 		
+		EnablexSI			: in  std_logic;
+		
 		TaylorEnxSI			: in  std_logic;
 		
 		TruncDithEnxSI		: in std_logic;
@@ -179,7 +181,9 @@ begin
 		if RstxRBI = '0' then
 			PhaseAccxDP		<= (others => '0');
 		elsif ClkxCI'event and ClkxCI = '1' then
-			PhaseAccxDP		<= PhaseAccxDN;
+			if EnablexSI = '1' then
+				PhaseAccxDP		<= PhaseAccxDN;
+			end if;
 		end if;
 	end process;
 	
