@@ -19,6 +19,7 @@ entity dds_core is
 		LUT_AMPL_PREC	: integer := 16;	-- number of databits stored in LUT for amplitude
 		LUT_GRAD_PREC	: integer := 5;		-- number of databist stored in LUT for gradient (slope)
 		PHASE_WIDTH		: integer := 32;	-- number of bits of phase accumulator
+		GRAD_WIDTH		: integer := 18;	-- number of LSBs used from the phase acc for interpolation
 		LFSR_WIDTH		: integer := 32;	-- number of bits used for the LFSR/PNGR
         LFSR_POLY       : std_logic_vector := "111"; -- polynomial of the LFSR/PNGR
 		LFSR_SEED		: integer := 12364;	-- seed for LFSR
@@ -54,8 +55,9 @@ architecture arch of dds_core is
 	------------------------------------------------------------------------------------------------
 
 	-- phase accumulator
+	signal FTWxDP, FTWxDN				: std_logic_vector((PHASE_WIDTH - 1) downto 0);
 	signal PhaseAccxDP, PhaseAccxDN		: std_logic_vector((PHASE_WIDTH - 1) downto 0);
-	signal PhaseGradxDP					: std_logic_vector((PHASE_WIDTH - LUT_DEPTH - 1) downto 0);
+	signal PhaseGradxDP					: std_logic_vector((GRAD_WIDTH - 1) downto 0);
 	
 	
 	-- dithering noise generator
@@ -114,14 +116,14 @@ begin
 	
 	LINE0 : entity work.DelayLine(rtl)
 	generic map (
-		DELAY_WIDTH		=> PHASE_WIDTH - LUT_DEPTH,
-		DELAY_CYCLES	=> 2
+		DELAY_WIDTH		=> GRAD_WIDTH,
+		DELAY_CYCLES	=> 3	-- account for LUT delay
 	)
 	port map(
 		ClkxCI			=> ClkxCI,
 		RstxRBI			=> RstxRBI,
 		EnablexSI		=> '1',
-		InputxDI		=> PhaseAccxDP((PHASE_WIDTH-LUT_DEPTH-1) downto 0),
+		InputxDI		=> PhaseAccxDP((PHASE_WIDTH-LUT_DEPTH-1) downto (PHASE_WIDTH-LUT_DEPTH-GRAD_WIDTH)),
 		OutputxDO		=> PhaseGradxDP
 	);
 	
@@ -131,7 +133,7 @@ begin
 		LUT_AMPL_PREC	=> LUT_AMPL_PREC,
 		LUT_GRAD_PREC	=> LUT_GRAD_PREC,
 		CORR_WIDTH		=> LUT_AMPL_PREC,
-		GRAD_WIDTH		=> PHASE_WIDTH - LUT_DEPTH,
+		GRAD_WIDTH		=> GRAD_WIDTH,
 		DITHER_WIDTH	=> LUT_AMPL_PREC - OUT_WIDTH,
 		OUT_WIDTH		=> OUT_WIDTH
 	)
@@ -152,7 +154,7 @@ begin
 		LUT_AMPL_PREC	=> LUT_AMPL_PREC,
 		LUT_GRAD_PREC	=> LUT_GRAD_PREC,
 		CORR_WIDTH		=> LUT_AMPL_PREC,
-		GRAD_WIDTH		=> PHASE_WIDTH - LUT_DEPTH,
+		GRAD_WIDTH		=> GRAD_WIDTH,
 		DITHER_WIDTH	=> LUT_AMPL_PREC - OUT_WIDTH,
 		OUT_WIDTH		=> OUT_WIDTH
 	)
@@ -187,29 +189,53 @@ begin
 		end if;
 	end process;
 	
+	p_sync_register : process(ClkxCI, RstxRBI)
+	begin
+		if RstxRBI = '0' then
+			FTWxDP	<= (others => '0');
+		elsif ClkxCI'event and ClkxCI = '1' then
+			FTWxDP	<= FTWxDN;
+		end if;
+	end process;
+	
 	
 	------------------------------------------------------------------------------------------------
 	--	Combinatorical process (parallel logic)
 	------------------------------------------------------------------------------------------------
-
+	
 	--------------------------------------------
-	-- ProcessName: p_comb_phase_accumulator_logic
+	-- ProcessName: p_comb_phase_dither
 	-- This process implements the accumulator logic with an optional addition of dithering noise.
 	--------------------------------------------
-	p_comb_phase_accumulator_logic : process(PhaseAccxDP, FTWxDI, PhaseDithEnxSI, PhaseDithMasksxSI, DitherNoisexD)
-		variable PhaseAcc		: unsigned((PhaseAccxDP'length - 1) downto 0);
-		variable Ftw			: unsigned((FTWxDI'length - 1) downto 0);
-		variable DitherNoise 	: unsigned((DitherNoisexD'length - 1) downto 0);
+	p_comb_phase_dither : process(PhaseDithEnxSI, FTWxDI, PhaseDithMasksxSI, DitherNoisexD)
+		variable Ftw			: unsigned((PHASE_WIDTH - 1) downto 0);
+		variable DitherNoise 	: unsigned((PHASE_WIDTH - 1) downto 0);
+		variable Sum			: unsigned((PHASE_WIDTH - 1) downto 0);
 	begin
-		PhaseAcc	:= unsigned(PhaseAccxDP);
 		Ftw			:= unsigned(FTWxDI);
 		DitherNoise	:= unsigned(PhaseDithMasksxSI and DitherNoisexD);
 		
 		if (PhaseDithEnxSI = '1') then
-			PhaseAcc := PhaseAcc + Ftw + DitherNoise;
+			Sum := Ftw + DitherNoise;
 		else
-			PhaseAcc := PhaseAcc + Ftw;
+			Sum := Ftw;
 		end if;
+		
+		FTWxDN		<= std_logic_vector(Sum);
+	end process;
+	
+	--------------------------------------------
+	-- ProcessName: p_comb_phase_accumulator_logic
+	-- This process implements the accumulator logic with an optional addition of dithering noise.
+	--------------------------------------------
+	p_comb_phase_accumulator_logic : process(PhaseAccxDP, FTWxDP)
+		variable PhaseAcc		: unsigned((PhaseAccxDP'length - 1) downto 0);
+		variable Ftw			: unsigned((FTWxDI'length - 1) downto 0);
+	begin
+		PhaseAcc	:= unsigned(PhaseAccxDP);
+		Ftw			:= unsigned(FTWxDI);
+		
+		PhaseAcc := PhaseAcc + Ftw;
 		
 		PhaseAccxDN <= std_logic_vector(PhaseAcc);
 	end process;

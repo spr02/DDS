@@ -89,5 +89,5 @@ begin
 	--	Output Assignment
 	------------------------------------------------------------------------------------------------
 	AmplxDO	<= AmplxD;		-- output dithered value
-
+	
 end arch;

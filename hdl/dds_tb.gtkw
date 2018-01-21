@@ -1,33 +1,43 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Mon Jan 15 14:28:36 2018
+[*] Sun Jan 21 12:35:19 2018
 [*]
 [dumpfile] "/home/jannik/git/DDS/hdl/dds_tb.fst"
-[dumpfile_mtime] "Mon Jan 15 14:23:02 2018"
-[dumpfile_size] 148287
+[dumpfile_mtime] "Sun Jan 21 12:34:36 2018"
+[dumpfile_size] 204803
 [savefile] "/home/jannik/git/DDS/hdl/dds_tb.gtkw"
 [timestart] 0
 [size] 1920 1015
 [pos] 2567 0
-*-27.257809 582500000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-28.430107 50000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] i0.
 [treeopen] i0.dds0.
+[treeopen] i0.dds0.lut0.
 [treeopen] i0.dds0.noise_shaper_i.
 [treeopen] i0.dds0.noise_shaper_q.
-[sst_width] 275
-[signals_width] 374
+[sst_width] 332
+[signals_width] 454
 [sst_expanded] 1
-[sst_vpaned_height] 342
+[sst_vpaned_height] 228
 @28
 clkxc
 rstxrb
 enablexs
+@420
+i0.dds0.ftwxdp[31:0]
 @24
-ftwxd[31:0]
 i0.dds0.dithernoisexd[31:0]
-i0.dds0.phasegradxdp[21:0]
 @200
 -LUT
+@24
+i0.dds0.lut0.lut0.lutaddrxsp[7:0]
+i0.dds0.lut0.lut0.lutoutsinxd[15:0]
+@420
+i0.dds0.lut0.lut0.sinxdp[15:0]
+@28
+i0.dds0.lut0.lut0.invsinxsp
+@29
+i0.dds0.lut0.lut0.pihalfdelayxsp
 @420
 i0.dds0.amplixd[15:0]
 i0.dds0.amplqxd[15:0]
@@ -44,12 +54,23 @@ i0.dds0.noise_shaper_q.taylorcorrectedxd[15:0]
 -DITHER
 @24
 i0.dds0.noise_shaper_i.dither.dithernoisexdi[3:0]
+@200
+-SWEEP
+@28
+i0.sweepenxsi
+i0.sweepupdownxsi
 @420
-i0.dds0.noise_shaper_i.dither.amplditheredxd[11:0]
-i0.dds0.noise_shaper_q.dither.amplditheredxd[11:0]
+i0.sweepratexdi[31:0]
+i0.sweepratexdp[31:0]
+i0.botftwxdi[31:0]
+i0.topftwxdi[31:0]
+i0.ftwxdp[31:0]
+@28
+i0.upxsp
+i0.downxsp
 @200
 -OUTPUT
-@29
+@28
 validxs
 @420
 ixd[11:0]

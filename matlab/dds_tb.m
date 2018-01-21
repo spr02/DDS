@@ -5,13 +5,14 @@ params.PHASE_DITHER = false;       % enable phase_acc dithering
 params.AMPL_DITHER = true;         % enable amplitude dithering in case of truncation of dds_out
 params.TAYLOR = true;              % enable taylor series exapansion of LUT values
 params.SWEEP = false;              % do a frequency sweep
-params.SWEEP_UP_DOWN = true;      % do linear up and down sweep or only up
+params.SWEEP_UP_DOWN = false;      % do linear up and down sweep or only up
 
 % bit widths
 params.N_lut_addr = 10;    % LUT size in bit (actual LUT size will be N-2 since we exploit symmertries in sine)
 params.N_lut = 16;         % number of data bis in LUT
 params.N_adc = 12;         % number of bits of the ADC
 params.N_phase = 32;       % number of bits for phase accumulator
+params.N_grad = 18;
 params.N_lfsr = 32;        % number of bits for the lfsr (psrn generator)
 
 %lfsr
@@ -30,6 +31,7 @@ F_res = params.F_clk / pow2(params.N_phase);  % calculate frequency resolution i
 % calculate phase/frequency tuning word
 params.FTW_0 = round(params.F_0 / F_res); % value used to increment the phase accumulator
 params.FTW_1 = round(params.F_1 / F_res); % top value in case of sewwp
+params.Sweep_rate = round((params.FTW_1 - params.FTW_0) / params.len);
 % FTW_0 = bin2dec('00000001000000000000000000000000');
 % FTW_0 = bin2dec('00000001111111111111111111111111');
 % FTW_0 = bin2dec('00000001000000000000000000000001');

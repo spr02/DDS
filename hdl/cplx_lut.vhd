@@ -77,15 +77,20 @@ architecture arch of trig_lut is
 	------------------------------------------------------------------------------------------------
 	shared variable TrigLUT	: ROM_TYPE := init_lut(LUT_DEPTH, LUT_AMPL_PREC);
 
-	signal LutAddrxS					: std_logic_vector((LUT_DEPTH - 3) downto 0);
+	signal LutAddrxSP, LutAddrxSN		: std_logic_vector((LUT_DEPTH - 3) downto 0);
 	signal LutOutxD						: std_logic_vector((2*LUT_AMPL_PREC - 1) downto 0);
 	
-	signal OutConstxSP, OutConstxSN		: std_logic;
+	signal PiHalfxSP, PiHalfxSN			: std_logic;
+	signal PiHalfDelayxSP				: std_logic;
 	signal InvSinxSP, InvSinxSN			: std_logic;
+	signal InvSinDelayxSP				: std_logic;
 	signal InvCosxSP, InvCosxSN			: std_logic;
+	signal InvCosDelayxSP				: std_logic;
 	
 	signal LutOutSinxD					: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
 	signal LutOutCosxD					: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
+	
+	signal PhaseMSBxSP, PhaseMSBxSN		: std_logic_vector(1 downto 0);
 	
 	signal SinxDP, SinxDN				: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
 	signal CosxDP, CosxDN				: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
@@ -102,17 +107,22 @@ begin
 	p_synq_regs : process (ClkxCI, RstxRBI)
 	begin
 		if RstxRBI = '0' then
-			OutConstxSP	<= '0';
-			InvSinxSP	<= '0';
-			InvCosxSP	<= '0';
-			SinxDP		<= (others => '0');
-			CosxDP		<= (others => '0');
+			PiHalfxSP		<= '0';
+			InvSinxSP		<= '0';
+			InvCosxSP		<= '0';
+			LutAddrxSP		<= (others => '0');
+			PhaseMSBxSP		<= (others => '0');
+			SinxDP			<= (others => '0');
+			CosxDP			<= (others => '0');
 		elsif ClkxCI'event and ClkxCI = '1' then
-			OutConstxSP	<= OutConstxSN;
-			InvSinxSP	<= InvSinxSN;
-			InvCosxSP	<= InvCosxSN;
-			SinxDP		<= SinxDN;
-			CosxDP		<= CosxDN;
+			PiHalfxSP		<= PiHalfxSN;
+			PiHalfDelayxSP	<= PiHalfxSP;
+			InvSinxSP		<= InvSinxSN;
+			InvCosxSP		<= InvCosxSN;
+			LutAddrxSP		<= LutAddrxSN;
+			PhaseMSBxSP		<= PhaseMSBxSN;
+			SinxDP			<= SinxDN;
+			CosxDP			<= CosxDN;
 		end if;
 	end process p_synq_regs;
 	
@@ -123,7 +133,7 @@ begin
 	p_sync_rom : process (ClkxCI)
 	begin
 		if ClkxCI'event and ClkxCI = '1' then
-			LutOutxD <= TrigLUT(to_integer(unsigned(LutAddrxS)));
+			LutOutxD <= TrigLUT(to_integer(unsigned(LutAddrxSP)));
 		end if;
 	end process p_sync_rom;
 	
@@ -133,26 +143,27 @@ begin
 	p_comb_const : process (PhasexDI)
 	begin
 		if PhasexDI(LUT_DEPTH - 2) = '1' and PhasexDI(LUT_DEPTH-3 downto 0) = (PhasexDI(LUT_DEPTH-3 downto 0)'range => '0') then
-			OutConstxSN <= '1';
+			PiHalfxSN <= '1';
 		else
-			OutConstxSN <= '0';
+			PiHalfxSN <= '0';
 		end if;
 	end process p_comb_const;
 	
-	
-	LutAddrxS <= PhasexDI(LUT_DEPTH - 3 downto 0) when PhasexDI(LUT_DEPTH - 2) = '0' else twos_complement( PhasexDI(LUT_DEPTH - 3 downto 0) );
+	-- LUT address and 
+	PhaseMSBxSN		<= PhasexDI((LUT_DEPTH - 1) downto (LUT_DEPTH - 2));
+	LutAddrxSN		<= PhasexDI(LUT_DEPTH - 3 downto 0) when PhasexDI(LUT_DEPTH - 2) = '0' else twos_complement( PhasexDI(LUT_DEPTH - 3 downto 0) );
 	
 	-- output the "constant" value in extreme cases (pi/2), i.e. LutOutSinxD = 2^PRECISION-1 and LutOutCosxD = 0
-	LutOutSinxD	<= LutOutxD((2*LUT_AMPL_PREC - 1) downto LUT_AMPL_PREC) when OutConstxSP = '0' else std_logic_vector(to_unsigned(2**(LUT_AMPL_PREC-1) - 1, LUT_AMPL_PREC));
-	LutOutCosxD	<= LutOutxD((LUT_AMPL_PREC - 1) downto 0) when OutConstxSP = '0' else std_logic_vector(to_unsigned(0, LUT_AMPL_PREC));
-	
+	LutOutSinxD		<= LutOutxD((2*LUT_AMPL_PREC - 1) downto LUT_AMPL_PREC)	when PiHalfDelayxSP = '0' else std_logic_vector(to_unsigned(2**(LUT_AMPL_PREC-1) - 1, LUT_AMPL_PREC));
+	LutOutCosxD		<= LutOutxD((LUT_AMPL_PREC - 1) downto 0) 				when PiHalfDelayxSP = '0' else std_logic_vector(to_unsigned(0, LUT_AMPL_PREC));
+		
 	-- invert signals
-	InvSinxSN <= PhasexDI(LUT_DEPTH - 1);
-	InvCosxSN <= PhasexDI(LUT_DEPTH - 1) xor PhasexDI(LUT_DEPTH - 2);
+	InvSinxSN 		<= PhaseMSBxSP(1);
+	InvCosxSN 		<= PhaseMSBxSP(1) xor PhaseMSBxSP(0);
 	
 	-- get actual sine and cosine values
-	SinxDN <= LutOutSinxD when InvSinxSP = '0' else twos_complement(LutOutSinxD);
-	CosxDN <= LutOutCosxD when InvCosxSP = '0' else twos_complement(LutOutCosxD);
+	SinxDN 			<= LutOutSinxD when InvSinxSP = '0' else twos_complement(LutOutSinxD);
+	CosxDN 			<= LutOutCosxD when InvCosxSP = '0' else twos_complement(LutOutCosxD);
 
 	
 	------------------------------------------------------------------------------------------------

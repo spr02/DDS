@@ -63,7 +63,7 @@ begin
 		CosxDO			=> Lut0AmplIxDN
 	);
 	
-	LUT1 : entity work.trig_lut
+	LUT1 : entity work.trig_lut(arch)
 	generic map(
 		LUT_DEPTH		=> LUT_DEPTH,
 		LUT_AMPL_PREC	=> LUT_AMPL_PREC

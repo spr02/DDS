@@ -18,6 +18,7 @@ architecture behav of dds_tb is
 			LUT_AMPL_PREC	: integer := 16;	-- number of databits stored in LUT for amplitude
 			LUT_GRAD_PREC	: integer := 5;		-- number of databist stored in LUT for gradient (slope)
 			PHASE_WIDTH		: integer := 32;	-- number of bits of phase accumulator
+			GRAD_WIDTH		: integer := 18;	-- number of LSBs used from the phase acc for interpolation
 			LFSR_WIDTH		: integer := 32;	-- number of bits used for the LFSR/PNGR
 			LFSR_POLY       : std_logic_vector := "111"; -- polynomial of the LFSR/PNGR
 			LFSR_SEED		: integer := 12364;	-- seed for LFSR
@@ -28,7 +29,7 @@ architecture behav of dds_tb is
 			RstxRBI				: in  std_logic;
 			
 			EnablexSI			: in  std_logic;
-			
+		
 			TaylorEnxSI			: in  std_logic;
 	-- 		TaylorAutoxSI	: in  std_logic; --needed???
 			
@@ -37,8 +38,15 @@ architecture behav of dds_tb is
 			PhaseDithEnxSI		: in  std_logic;
 			PhaseDithMasksxSI	: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
 			
+			--sweep logic
+			SweepEnxSI			: in  std_logic;
+			SweepUpDownxSI		: in  std_logic;
+			SweepRatexDI		: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
+			
+			TopFTWxDI			: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
+			BotFTWxDI			: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
+			
 			PhixDI				: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
-			FTWxDI				: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);		
 			
 			ValidxSO			: out std_logic;
 			PhixDO				: out std_logic_vector((PHASE_WIDTH - 1) downto 0);
@@ -56,7 +64,18 @@ architecture behav of dds_tb is
 		write(LogLine, integer'image(to_integer(unsigned(x))));
 		write(LogLine, string'(";"));
 		return LogLine;
-	end function param_slv_to_matlab_log;
+	end function;
+	
+	function param_sgn_to_matlab_log (name : string; x : std_logic_vector) return line is
+		variable LogLine : line;
+	begin
+		write(LogLine, string'("params."));
+		write(LogLine, name);
+		write(LogLine, string'(" = "));
+		write(LogLine, integer'image(to_integer(signed(x))));
+		write(LogLine, string'(";"));
+		return LogLine;
+	end function;
 	
 	function param_int_to_matlab_log (name : string; x : integer) return line is
 		variable LogLine : line;
@@ -67,7 +86,7 @@ architecture behav of dds_tb is
 		write(LogLine, integer'image(x));
 		write(LogLine, string'(";"));
 		return LogLine;
-	end function param_int_to_matlab_log;
+	end function;
 	
 	function param_sl_to_matlab_log (name : string; x : std_logic) return line is
 		variable LogLine : line;
@@ -82,7 +101,7 @@ architecture behav of dds_tb is
 		end if;
 		write(LogLine, string'(";"));
 		return LogLine;
-	end function param_sl_to_matlab_log;
+	end function;
 	
 	--------------------------------------------------------------------------------------
 	-- Signals
@@ -94,6 +113,7 @@ architecture behav of dds_tb is
 	constant LUT_AMPL_PREC			: integer := 16;
 	constant LUT_GRAD_PREC			: integer := 16;
 	constant PHASE_WIDTH			: integer := 32;	-- number of bits of phase accumulator
+	constant GRAD_WIDTH				: integer := 17;	-- number of bits of phase accumulator
 	constant LFSR_WIDTH				: integer := 32;	-- number of bits used for the LFSR/PNGR
 	constant LFSR_SEED				: integer := 12364;	-- seed for LFSR
 	constant OUT_WIDTH				: integer := 12;		-- number of bits actually output (should be equal to DAC bits)
@@ -122,6 +142,12 @@ architecture behav of dds_tb is
 	signal PhaseDithMasksxS	: std_logic_vector((PHASE_WIDTH - 1) downto 0);
 			
 
+	signal SweepEnxS		: std_logic;
+	signal SweepUpDownxS	: std_logic;
+	signal SweepRatexD		: std_logic_vector((PHASE_WIDTH - 1) downto 0);
+	signal TopFTWxD			: std_logic_vector((PHASE_WIDTH - 1) downto 0);
+	signal BotFTWxD			: std_logic_vector((PHASE_WIDTH - 1) downto 0);
+			
 	signal PhiInxD			: std_logic_vector((PHASE_WIDTH - 1) downto 0);
 	signal FTWxD			: std_logic_vector((PHASE_WIDTH - 1) downto 0);		
 	
@@ -143,6 +169,7 @@ begin
 		LUT_AMPL_PREC	=> LUT_AMPL_PREC,	-- number of databits stored in LUT for amplitude
 		LUT_GRAD_PREC	=> LUT_GRAD_PREC,		-- number of databist stored in LUT for gradient (slope)
 		PHASE_WIDTH		=> PHASE_WIDTH,	-- number of bits of phase accumulator
+		GRAD_WIDTH		=> GRAD_WIDTH,
 		LFSR_WIDTH		=> LFSR_WIDTH,	-- number of bits used for the LFSR/PNGR
 		LFSR_POLY       => "11100000000000000000001000000000", -- 0,1,2,22,32 (32 is set implicitly)
 		LFSR_SEED		=> 12364,	-- seed for LFSR
@@ -152,7 +179,7 @@ begin
 		ClkxCI				=> ClkxC,
 		RstxRBI				=> RstxRB,
 		
-		EnablexSI			=> EnablexS,
+		EnablexSI			=> '1',
 		
 		TaylorEnxSI			=> TaylorEnxS,
 		
@@ -161,8 +188,14 @@ begin
 		PhaseDithEnxSI		=> PhaseDithEnxS,
 		PhaseDithMasksxSI	=> PhaseDithMasksxS,
 		
+		SweepEnxSI			=> SweepEnxS,
+		SweepUpDownxSI		=> SweepUpDownxS,
+		SweepRatexDI		=> SweepRatexD,
+		
+		TopFTWxDI			=> TopFTWxD,
+		BotFTWxDI			=> BotFTWxD,
+		
 		PhixDI				=> PhiInxD,
-		FTWxDI				=> FTWxD,
 		
 		ValidxSO			=> ValidxS,
 		PhixDO				=> PhiOutxD,
@@ -214,15 +247,27 @@ begin
 		PhaseDithEnxS		<= '0';
 		PhaseDithMasksxS	<= (others => '0');
 		
+		SweepEnxS			<= '0';
+		SweepUpDownxS		<= '0';
+		SweepRatexD			<= "00000000000000111111000000000000";
+		TopFTWxD			<= "00011100000000000000000000000000";
+-- 		BotFTWxD			<= ;
+		
 		PhiInxD				<= (others => '0');
-		FTWxD				<= "00000001000000000000000000000000"; 
-		FTWxD				<= "00000001111111111111111111111111"; 
--- 		FTWxD				<= "00000001000000000000000000000001"; 
--- 		FTWxD				<= std_logic_vector(to_unsigned(901943132, 32));
+		BotFTWxD			<= "00000000010000000000000000000000"; 
+		BotFTWxD			<= "11100100000000000000000000000000"; 
+-- 		BotFTWxD			<= (others => '0');
+-- 		BotFTWxD			<= "00000001000000000000000000000001"; 
+-- 		BotFTWxD			<= std_logic_vector(to_unsigned(901943132, 32));
 		
 		wait until rising_edge(RstxRB);
 		
-		--acount for latency of LUT (2) taylor(2) and dithering (1)
+		--acount for latency of SWEEP(2), LUT(3), taylor(2) and dithering (3) -> 10 cycles
+		wait until rising_edge(ClkxC);
+		wait until rising_edge(ClkxC);
+		wait until rising_edge(ClkxC);
+		wait until rising_edge(ClkxC);
+		wait until rising_edge(ClkxC);
 		wait until rising_edge(ClkxC);
 		wait until rising_edge(ClkxC);
 		wait until rising_edge(ClkxC);
@@ -238,6 +283,10 @@ begin
 		writeline(LOG_FILE, LogLine);
 		LogLine := param_sl_to_matlab_log("TAYLOR", TaylorEnxS);
 		writeline(LOG_FILE, LogLine);	
+		LogLine := param_sl_to_matlab_log("SWEEP", SweepEnxS);
+		writeline(LOG_FILE, LogLine);	
+		LogLine := param_sl_to_matlab_log("SWEEP_UP_DOWN", SweepUpDownxS);
+		writeline(LOG_FILE, LogLine);	
 		LogLine := param_int_to_matlab_log("N_lut_addr", LUT_DEPTH);
 		writeline (LOG_FILE, LogLine);
 		LogLine := param_int_to_matlab_log("N_lut", LUT_AMPL_PREC);
@@ -246,9 +295,15 @@ begin
 		writeline (LOG_FILE, LogLine);
 		LogLine := param_int_to_matlab_log("N_phase", PHASE_WIDTH);
 		writeline (LOG_FILE, LogLine);
+		LogLine := param_int_to_matlab_log("N_grad", GRAD_WIDTH);
+		writeline (LOG_FILE, LogLine);
 		LogLine := param_int_to_matlab_log("N_lfsr", LFSR_WIDTH);
 		writeline (LOG_FILE, LogLine);
-		LogLine := param_slv_to_matlab_log("FTW_0", FTWxD);
+		LogLine := param_sgn_to_matlab_log("FTW_0", BotFTWxD);
+		writeline(LOG_FILE, LogLine);
+		LogLine := param_sgn_to_matlab_log("FTW_1", TopFTWxD);
+		writeline(LOG_FILE, LogLine);
+		LogLine := param_slv_to_matlab_log("Sweep_rate", SweepRatexD);
 		writeline(LOG_FILE, LogLine);
 		
 		-- write actual dds output data

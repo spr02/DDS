@@ -19,6 +19,7 @@ entity dds is
 		LUT_AMPL_PREC	: integer := 16;	-- number of databits stored in LUT for amplitude
 		LUT_GRAD_PREC	: integer := 5;		-- number of databist stored in LUT for gradient (slope)
 		PHASE_WIDTH		: integer := 32;	-- number of bits of phase accumulator
+		GRAD_WIDTH		: integer := 18;	-- number of LSBs used from the phase acc for interpolation
 		LFSR_WIDTH		: integer := 32;	-- number of bits used for the LFSR/PNGR
         LFSR_POLY       : std_logic_vector := "111"; -- polynomial of the LFSR/PNGR
 		LFSR_SEED		: integer := 12364;	-- seed for LFSR
@@ -38,8 +39,15 @@ entity dds is
 		PhaseDithEnxSI		: in  std_logic;
 		PhaseDithMasksxSI	: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
 		
+		--sweep logic
+		SweepEnxSI			: in  std_logic;
+		SweepUpDownxSI		: in  std_logic;
+		SweepRatexDI		: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
+		
+		TopFTWxDI			: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
+		BotFTWxDI			: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
+		
 		PhixDI				: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
-		FTWxDI				: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);		
 		
 		ValidxSO			: out std_logic;
 		PhixDO				: out std_logic_vector((PHASE_WIDTH - 1) downto 0);
@@ -52,13 +60,40 @@ end dds;
 
 architecture arch of dds is
 	------------------------------------------------------------------------------------------------
+	--	Functions and types
+	------------------------------------------------------------------------------------------------
+	
+	--------------------------------------------
+	-- FunctionName: twos_complement
+	-- This function returns the two's complement of the input vector x.
+	--------------------------------------------
+	function twos_complement (x : std_logic_vector) return std_logic_vector is
+		variable tmp	: std_logic_vector((x'length) downto 0);
+	begin
+-- 		tmp := not x;
+-- 		return std_logic_vector(unsigned(tmp) + 1);
+		tmp := '0' & (not x);
+		tmp := std_logic_vector(unsigned(tmp) + 1);
+		return tmp((x'length - 1) downto 0);
+	end function twos_complement;
+	
+	
+	------------------------------------------------------------------------------------------------
 	--	Signals and types
 	------------------------------------------------------------------------------------------------
 
+	-- frequency tuning word
+	signal FTWxDP, FTWxDN				: std_logic_vector((PHASE_WIDTH - 1) downto 0);
+	
+	signal UpxSP, UpxSN					: std_logic;
+	signal DownxSP, DownxSN				: std_logic;
+	signal SweepRatexDP, SweepRatexDN	: std_logic_vector((PHASE_WIDTH - 1) downto 0);
+	
 	-- ouput signals
-	signal ValidxS					: std_logic;
-	signal IxD						: std_logic_vector((OUT_WIDTH - 1) downto 0);
-	signal QxD						: std_logic_vector((OUT_WIDTH - 1) downto 0);
+	signal ValidxS						: std_logic;
+	signal PhixD						: std_logic_vector((PHASE_WIDTH - 1) downto 0);
+	signal IxD							: std_logic_vector((OUT_WIDTH - 1) downto 0);
+	signal QxD							: std_logic_vector((OUT_WIDTH - 1) downto 0);
 begin
 	------------------------------------------------------------------------------------------------
 	--	Instantiate Components
@@ -69,6 +104,7 @@ begin
 		LUT_AMPL_PREC	=> LUT_AMPL_PREC,
 		LUT_GRAD_PREC	=> LUT_GRAD_PREC,
 		PHASE_WIDTH		=> PHASE_WIDTH,
+		GRAD_WIDTH		=> GRAD_WIDTH,
 		LFSR_WIDTH		=> LFSR_WIDTH,
         LFSR_POLY       => LFSR_POLY,
 		LFSR_SEED		=> LFSR_SEED,
@@ -83,8 +119,8 @@ begin
 		PhaseDithEnxSI		=> PhaseDithEnxSI,
 		PhaseDithMasksxSI	=> PhaseDithMasksxSI,
 		PhixDI				=> PhixDI,
-		FTWxDI				=> FTWxDI,
-		PhixDO				=> PhixDO,
+		FTWxDI				=> FTWxDP,
+		PhixDO				=> PhixD,
 		QxDO				=> QxD,
 		IxDO				=> IxD
 	);
@@ -93,7 +129,7 @@ begin
 	DELAY_VALID0 : entity work.DelayLine(rtl)
 	generic map (
 		DELAY_WIDTH		=> 1,
-		DELAY_CYCLES	=> 4 -- four instead of five, since EnabelxSI already introduces one cycle delay
+		DELAY_CYCLES	=> 7 -- four instead of five, since EnabelxSI already introduces one cycle delay
 	)
 	port map(
 		ClkxCI			=> ClkxCI,
@@ -108,75 +144,76 @@ begin
 	------------------------------------------------------------------------------------------------
 	
 	--------------------------------------------
-    -- ProcessName: p_sync_phase_accumulator
-    -- This process implements the phase accumulator.
-    --------------------------------------------
--- 	p_sync_phase_accumulator : process(ClkxCI, RstxRBI)
--- 	begin
--- 		if RstxRBI = '0' then
--- 			PhaseAccxDP		<= (others => '0');
--- 		elsif ClkxCI'event and ClkxCI = '1' then
--- 			PhaseAccxDP		<= PhaseAccxDN;
--- 		end if;
--- 	end process p_sync_phase_accumulator;
--- 	
-	
-	--------------------------------------------
     -- ProcessName: p_sync_registers
-    -- This process implements some registers to delay or syncronize data.
+    -- This process implements some registers.
     --------------------------------------------
--- 	p_sync_registers : process(ClkxCI, RstxRBI)
--- 	begin
--- 		if RstxRBI = '0' then
--- 			Lut0AmplIxDP	<= (others => '0');
--- 			CorrIxDP		<= (others => '0');
--- 			IxDP			<= (others => '0');
--- 			Lut0AmplQxDP	<= (others => '0');
--- 			CorrQxDP		<= (others => '0');
--- 			QxDP			<= (others => '0');
--- 		elsif ClkxCI'event and ClkxCI = '1' then
--- 			Lut0AmplIxDP	<= Lut0AmplIxDN;
--- 			CorrIxDP		<= CorrIxDN;
--- 			IxDP			<= IxDN;
--- 			Lut0AmplQxDP	<= Lut0AmplQxDN;
--- 			CorrQxDP		<= CorrQxDN;
--- 			QxDP			<= QxDN;
--- 		end if;
--- 	end process p_sync_registers;
+	p_sync_registers : process(ClkxCI, RstxRBI)
+	begin
+		if RstxRBI = '0' then
+			UpxSP			<= '0';
+			DownxSP			<= '0';
+			SweepRatexDP	<= std_logic_vector(to_unsigned(2**(PHASE_WIDTH-5), PHASE_WIDTH)); -- initialize with a value not zero
+-- 			SweepRatexDP	<= SweepRatexDI;
+			FTWxDP			<= (others => '0');
+-- 			FTWxDP			<= BotFTWxDI;
+		elsif ClkxCI'event and ClkxCI = '1' then
+			UpxSP			<= UpxSN;
+			DownxSP			<= DownxSN;
+			SweepRatexDP	<= SweepRatexDN;
+			FTWxDP			<= FTWxDN;
+		end if;
+	end process;
 	
-
 	
 	------------------------------------------------------------------------------------------------
 	--	Combinatorical process (parallel logic)
 	------------------------------------------------------------------------------------------------
-
+	UpxSN	<= '1' when (signed(FTWxDP) < signed(TopFTWxDI)) else '0'; -- smaller than top
+	DownxSN	<= '1' when (signed(FTWxDP) > signed(BotFTWxDI)) else '0'; -- greater than bot
+	
 	--------------------------------------------
-	-- ProcessName: p_comb_phase_accumulator_logic
-	-- This process implements the accumulator logic with an optional addition of dithering noise.
+    -- ProcessName: p_comb_sweep_rate
+    -- This process controls the logic behind the sweep rate, the modes are up/down or simply up.
+    --------------------------------------------
+	p_comb_sweep_rate : process(SweepUpDownxSI, SweepRatexDI, SweepRatexDP, UpxSP, DownxSP)
+	begin
+		if SweepUpDownxSI = '1' then
+			if UpxSP = '1' and DownxSP = '0' then
+				SweepRatexDN	<= SweepRatexDI; --count up
+			elsif UpxSP = '0' and DownxSP = '1'  then
+				SweepRatexDN	<= twos_complement(SweepRatexDI); --count down
+			else
+				SweepRatexDN	<= SweepRatexDP;
+			end if;
+		else
+			SweepRatexDN	<= SweepRatexDI;
+		end if;
+	end process;
+	
+	
 	--------------------------------------------
--- 	p_comb_phase_accumulator_logic : process(PhaseAccxDP, FTWxDI, PhaseDithgEnxSI, PhaseDithMasksxSI, DitherNoisexD)
--- 		variable PhaseAcc		: unsigned((PhaseAccxDP'length - 1) downto 0);
--- 		variable Ftw			: unsigned((FTWxDI'length - 1) downto 0);
--- 		variable DitherNoise 	: unsigned((DitherNoisexD'length - 1) downto 0);
--- 	begin
--- 		PhaseAcc	:= unsigned(PhaseAccxDP);
--- 		Ftw			:= unsigned(FTWxDI);
--- 		DitherNoise	:= unsigned(PhaseDithMasksxSI and DitherNoisexD);
--- 		
--- 		if (PhaseDithgEnxSI = '1') then
--- 			PhaseAcc := PhaseAcc + Ftw + DitherNoise;
--- 		else
--- 			PhaseAcc := PhaseAcc + Ftw;
--- 		end if;
--- 		
--- 		PhaseAccxDN <= std_logic_vector(PhaseAcc);
--- 	end process p_comb_phase_accumulator_logic;
-
+    -- ProcessName: p_comb_sweep_logic
+    -- This process controls the logic behind the actual frequency tuning word, either sweep (up/down or up) or no sweep.
+    --------------------------------------------
+	p_comb_sweep_logic : process(FTWxDP, SweepEnxSI, SweepUpDownxSI, SweepRatexDP, UpxSP, BotFTWxDI)
+	begin
+		if SweepEnxSI = '1' then
+			if SweepUpDownxSI = '0' and UpxSP = '0' then
+				FTWxDN	<= BotFTWxDI; -- in case of linear up chirp, reset FWT if top is reached
+			else
+				FTWxDN	<= std_logic_vector(signed(FTWxDP) + signed(SweepRatexDP));
+			end if;
+		else
+			FTWxDN	<= BotFTWxDI;
+		end if;
+	end process;
+	
 
 	------------------------------------------------------------------------------------------------
 	--	Output Assignment
 	------------------------------------------------------------------------------------------------
 	ValidxSO	<= ValidxS;		-- valid signal for I and Q component
+	PhixDO		<= PhixD;		-- phase output
 	QxDO		<= QxD;			-- sine or Q component
 	IxDO		<= IxD;			-- cosine or I component
 

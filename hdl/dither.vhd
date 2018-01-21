@@ -38,11 +38,16 @@ architecture arch of psnr_dither is
 	--	Signals and types
 	------------------------------------------------------------------------------------------------
 
-	-- adder output
-	signal AmplDitheredxD		: std_logic_vector((OUT_WIDTH - 1) downto 0);
+	-- input buffer/delay
+	signal AmplInxDP, AmplInxDN					: std_logic_vector((OUT_WIDTH - 1) downto 0);
+	signal AmplInDelayxDP						: std_logic_vector((OUT_WIDTH - 1) downto 0);
+	
+	-- adder output
+	signal SumxDP, SumxDN						: std_logic_vector((LUT_AMPL_PREC - 1)  downto 0);
+	signal AmplDitheredxDP, AmplDitheredxDN		: std_logic_vector((OUT_WIDTH - 1) downto 0);
 	
 	-- output signal buffer
-	signal AmplxDN, AmplxDP		: std_logic_vector((OUT_WIDTH - 1) downto 0);
+	signal AmplOutxDP, AmplOutxDN				: std_logic_vector((OUT_WIDTH - 1) downto 0);
 begin
 	
 	
@@ -57,9 +62,16 @@ begin
 	p_sync_registers : process(ClkxCI, RstxRBI)
 	begin
 		if RstxRBI = '0' then
-			AmplxDP			<= (others => '0');
+			AmplInxDP		<= (others => '0');
+			SumxDP			<= (others => '0');
+			AmplDitheredxDP	<= (others => '0');
+			AmplOutxDP		<= (others => '0');
 		elsif ClkxCI'event and ClkxCI = '1' then
-			AmplxDP			<= AmplxDN;
+			AmplInxDP		<= AmplInxDN;
+			AmplInDelayxDP	<= AmplInxDP;
+			SumxDP			<= SumxDN;
+			AmplDitheredxDP	<= AmplDitheredxDN;
+			AmplOutxDP		<= AmplOutxDN;
 		end if;
 	end process p_sync_registers;
 	
@@ -69,29 +81,44 @@ begin
 	--	Combinatorical process (parallel logic)
 	------------------------------------------------------------------------------------------------
 
+	AmplInxDN <= AmplxDI(AmplxDI'left downto (LUT_AMPL_PREC - OUT_WIDTH));
+	
 	--------------------------------------------
     -- ProcessName: p_comb_dither_add
-    -- This process implements an adder that saturates for positive numbers. It is used to add the dither
+    -- This process implements an adder. It is used to add the dither
     -- noise to the input amplitude.
     --------------------------------------------
 	p_comb_dither_add : process (AmplxDI, DitherNoisexDI)
-		variable Val		: signed((LUT_AMPL_PREC - 1) downto 0);
+		variable Ampl		: signed((LUT_AMPL_PREC - 1) downto 0);
 		variable Dither		: signed((LUT_AMPL_PREC - 1) downto 0);
 		variable Sum		: signed((LUT_AMPL_PREC - 1) downto 0);
-		constant tmp		: natural := 15;
 	begin
-		Val		:= signed(AmplxDI);
+		Ampl	:= signed(AmplxDI);
 		Dither	:= signed(resize(unsigned(DitherNoisexDI), Dither'length));
-		Sum		:= Val + Dither;
+		Sum		:= Ampl + Dither;
 		
-		-- saturate if a was positive and sum overflowed (both versions work)
-		if Val(Val'left) = '0' and Sum(Sum'left) = '1' then
--- 			Sum := "0" & (Sum'left-1 downto 0 => '1');
-			Sum := (tmp => '1', others => '0');
-			Sum := to_signed(2**(LUT_AMPL_PREC-1) - 1, LUT_AMPL_PREC);
-		end if;	
+		SumxDN	<= std_logic_vector(Sum);
+	end process;
+	
+	
+	--------------------------------------------
+    -- ProcessName: p_comb_saturate
+    -- This process implements saturation logic for positive numbers.
+    --------------------------------------------
+	p_comb_saturate : process (AmplInxDP, SumxDP)
+		constant MSB_POS	: natural := 15;
+		variable Sum		: signed((LUT_AMPL_PREC - 1) downto 0);
+	begin
+		Sum	:= signed(SumxDP);
 		
-		AmplDitheredxD <= std_logic_vector(Sum(Sum'left downto (LUT_AMPL_PREC - OUT_WIDTH)));
+		-- saturate if a was positive and sum overflowed (both versions work)
+		if AmplInxDP(AmplInxDP'left) = '0' and Sum(Sum'left) = '1' then
+-- 			Sum := "0" & (Sum'left-1 downto 0 => '1');		--version 1
+			Sum := (MSB_POS => '1', others => '0');			--version 2
+			Sum := to_signed(2**(LUT_AMPL_PREC-1) - 1, LUT_AMPL_PREC);
+		end if;	
+		
+		AmplDitheredxDN <= std_logic_vector(Sum(Sum'left downto (LUT_AMPL_PREC - OUT_WIDTH)));
 	end process;
 	
 	
@@ -100,18 +127,18 @@ begin
     -- This process implements an multiplexer that forwards either the dithered amplitude or
     -- simply the input value.
     --------------------------------------------
-	p_comb_mux_dither : process(DitherEnxSI, AmplxDI, AmplDitheredxD)
+	p_comb_mux_dither : process(DitherEnxSI, AmplInxDP, AmplDitheredxDP)
 	begin
 		if DitherEnxSI = '1' then
-			AmplxDN <= AmplDitheredxD;
+			AmplOutxDN <= AmplDitheredxDP;
 		else
-			AmplxDN <= AmplxDI(AmplxDI'left downto (LUT_AMPL_PREC - OUT_WIDTH));
+			AmplOutxDN <= AmplInDelayxDP;
 		end if;
 	end process;
 
 	------------------------------------------------------------------------------------------------
 	--	Output Assignment
 	------------------------------------------------------------------------------------------------
-	AmplxDO	<= AmplxDP;		-- output dithered value
+	AmplxDO	<= AmplOutxDP;		-- output dithered value
 
 end arch;
