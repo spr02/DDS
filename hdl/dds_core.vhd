@@ -233,7 +233,7 @@ begin
 		variable Ftw			: unsigned((FTWxDI'length - 1) downto 0);
 	begin
 		PhaseAcc	:= unsigned(PhaseAccxDP);
-		Ftw			:= unsigned(FTWxDI);
+		Ftw			:= unsigned(FTWxDP);
 		
 		PhaseAcc := PhaseAcc + Ftw;
 		

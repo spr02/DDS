@@ -20,4 +20,4 @@ This repository contains three folders:
 The folder [matlab](matlab) contains the reference model for the DDS core. In the folder [hdl](hdl) all VHDL files can be found, together with a Makefile for ghdl. The folder [misc](misc) contains a README with some useful links.
 
 ## TODO:
-- frequency sweep logic
+- check automatic verification
