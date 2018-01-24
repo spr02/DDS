@@ -40,12 +40,12 @@ architecture arch of cplx_grad_lut is
 	signal Lut0AddrxS					: std_logic_vector((LUT_DEPTH - 1) downto 0);
 	signal Lut0AmplIxDP, Lut0AmplIxDN	: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
 	signal Lut0AmplQxDP, Lut0AmplQxDN	: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
-	signal SlopeIxD						: std_logic_vector((LUT_GRAD_PREC - 1) downto 0);
+	signal SlopeIxDP, SlopeIxDN			: std_logic_vector((LUT_GRAD_PREC - 1) downto 0);
 	
 	signal Lut1AddrxS					: std_logic_vector((LUT_DEPTH - 1) downto 0);
 	signal Lut1AmplIxD					: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
 	signal Lut1AmplQxD					: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
-	signal SlopeQxD						: std_logic_vector((LUT_GRAD_PREC - 1) downto 0);
+	signal SlopeQxDP, SlopeQxDN			: std_logic_vector((LUT_GRAD_PREC - 1) downto 0);
 begin
 	------------------------------------------------------------------------------------------------
 	--	Instantiate Components
@@ -88,9 +88,13 @@ begin
 	p_sync_registers : process(ClkxCI, RstxRBI)
 	begin
 		if RstxRBI = '0' then
+			SlopeIxDP		<= (others => '0');
+			SlopeQxDP		<= (others => '0');
 			Lut0AmplIxDP	<= (others => '0');
 			Lut0AmplQxDP	<= (others => '0');
 		elsif ClkxCI'event and ClkxCI = '1' then
+			SlopeIxDP		<= SlopeIxDN;
+			SlopeQxDP		<= SlopeQxDN;
 			Lut0AmplIxDP	<= Lut0AmplIxDN;
 			Lut0AmplQxDP	<= Lut0AmplQxDN;
 		end if;
@@ -127,17 +131,17 @@ begin
 		SlopeI := I1 - I0;
 		SlopeQ := Q1 - Q0;
 		
-		SlopeIxD <= std_logic_vector(SlopeI((LUT_GRAD_PREC - 1) downto 0));
-		SlopeQxD <= std_logic_vector(SlopeQ((LUT_GRAD_PREC - 1) downto 0));
+		SlopeIxDN <= std_logic_vector(SlopeI((LUT_GRAD_PREC - 1) downto 0));
+		SlopeQxDN <= std_logic_vector(SlopeQ((LUT_GRAD_PREC - 1) downto 0));
 	end process;
 
 	
 	------------------------------------------------------------------------------------------------
 	--	Output Assignment
 	------------------------------------------------------------------------------------------------
-	AmplIxDO	<= Lut0AmplIxDN;
-	GradIxDO	<= SlopeIxD;
-	AmplQxDO	<= Lut0AmplQxDN;
-	GradQxDO	<= SlopeQxD;
+	AmplIxDO	<= Lut0AmplIxDP;
+	GradIxDO	<= SlopeIxDP;
+	AmplQxDO	<= Lut0AmplQxDP;
+	GradQxDO	<= SlopeQxDP;
 	
 end arch;

@@ -41,7 +41,7 @@ function [dds_out] = dds(parameters)
     %lfsr
     lfsr_poly       = set_param('lfsr_poly',  [32 22 2 1]);
     lfsr_seed       = set_param('lfsr_seed',  12364);
-    latency         = set_param('latency',    6);
+    latency         = set_param('latency',    8);
     if latency > 0
         tmp = lfsr(lfsr_seed, lfsr_poly, N_lfsr, N_lfsr, latency); % account for latency (i.e. use other seed)
         lfsr_seed   = tmp(end);

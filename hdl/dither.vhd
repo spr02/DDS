@@ -42,9 +42,11 @@ architecture arch of psnr_dither is
 	signal AmplInxDP, AmplInxDN					: std_logic_vector((OUT_WIDTH - 1) downto 0);
 	signal AmplInDelayxDP						: std_logic_vector((OUT_WIDTH - 1) downto 0);
 	
-	-- adder output
+	-- adder output
+
 	signal SumxDP, SumxDN						: std_logic_vector((LUT_AMPL_PREC - 1)  downto 0);
-	signal AmplDitheredxDP, AmplDitheredxDN		: std_logic_vector((OUT_WIDTH - 1) downto 0);
+	signal AmplDitheredxDP, AmplDitheredxDN		: std_logic_vector((OUT_WIDTH - 1) downto 0);
+
 	
 	-- output signal buffer
 	signal AmplOutxDP, AmplOutxDN				: std_logic_vector((OUT_WIDTH - 1) downto 0);
@@ -73,7 +75,7 @@ begin
 			AmplDitheredxDP	<= AmplDitheredxDN;
 			AmplOutxDP		<= AmplOutxDN;
 		end if;
-	end process p_sync_registers;
+	end process;
 	
 
 	
@@ -105,20 +107,20 @@ begin
     -- ProcessName: p_comb_saturate
     -- This process implements saturation logic for positive numbers.
     --------------------------------------------
-	p_comb_saturate : process (AmplInxDP, SumxDP)
-		constant MSB_POS	: natural := 15;
-		variable Sum		: signed((LUT_AMPL_PREC - 1) downto 0);
-	begin
-		Sum	:= signed(SumxDP);
+	p_comb_saturate : process (AmplInxDP, SumxDP)
+		constant MSB_POS	: natural := 15;
+		variable Sum		: signed((LUT_AMPL_PREC - 1) downto 0);
+	begin
+		Sum	:= signed(SumxDP);
 		
-		-- saturate if a was positive and sum overflowed (both versions work)
-		if AmplInxDP(AmplInxDP'left) = '0' and Sum(Sum'left) = '1' then
--- 			Sum := "0" & (Sum'left-1 downto 0 => '1');		--version 1
-			Sum := (MSB_POS => '1', others => '0');			--version 2
-			Sum := to_signed(2**(LUT_AMPL_PREC-1) - 1, LUT_AMPL_PREC);
-		end if;	
-		
-		AmplDitheredxDN <= std_logic_vector(Sum(Sum'left downto (LUT_AMPL_PREC - OUT_WIDTH)));
+		-- saturate if a was positive and sum overflowed (both versions work)
+		if AmplInxDP(AmplInxDP'left) = '0' and Sum(Sum'left) = '1' then
+-- 			Sum := "0" & (Sum'left-1 downto 0 => '1'); --version 1
+			Sum := (MSB_POS => '1', others => '0'); --version 2
+			Sum := to_signed(2**(LUT_AMPL_PREC-1) - 1, LUT_AMPL_PREC);
+		end if;	
+		
+		AmplDitheredxDN <= std_logic_vector(Sum(Sum'left downto (LUT_AMPL_PREC - OUT_WIDTH)));
 	end process;
 	
 	

@@ -78,7 +78,7 @@ architecture arch of trig_lut is
 	shared variable TrigLUT	: ROM_TYPE := init_lut(LUT_DEPTH, LUT_AMPL_PREC);
 
 	signal LutAddrxSP, LutAddrxSN		: std_logic_vector((LUT_DEPTH - 3) downto 0);
-	signal LutOutxD						: std_logic_vector((2*LUT_AMPL_PREC - 1) downto 0);
+	signal LutOutxDP, LutOutxDN			: std_logic_vector((2*LUT_AMPL_PREC - 1) downto 0);
 	
 	signal PiHalfxSP, PiHalfxSN			: std_logic;
 	signal PiHalfDelayxSP				: std_logic;
@@ -91,10 +91,40 @@ architecture arch of trig_lut is
 	signal LutOutCosxD					: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
 	
 	signal PhaseMSBxSP, PhaseMSBxSN		: std_logic_vector(1 downto 0);
+	signal PhaseMSBDelayxSP				: std_logic_vector(1 downto 0);
 	
 	signal SinxDP, SinxDN				: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
 	signal CosxDP, CosxDN				: std_logic_vector((LUT_AMPL_PREC - 1) downto 0);
 begin
+
+	------------------------------------------------------------------------------------------------
+	--	Instantiate Components
+	------------------------------------------------------------------------------------------------
+	LINE0 : entity work.DelayLine(rtl)
+	generic map (
+		DELAY_WIDTH		=> 1,
+		DELAY_CYCLES	=> 3	-- account for ROM delay
+	)
+	port map(
+		ClkxCI			=> ClkxCI,
+		RstxRBI			=> RstxRBI,
+		EnablexSI		=> '1',
+		InputxDI(0)		=> PiHalfxSN,
+		OutputxDO(0)	=> PiHalfxSP
+	);
+	
+	LINE1 : entity work.DelayLine(rtl)
+	generic map (
+		DELAY_WIDTH		=> 2,
+		DELAY_CYCLES	=> 2	-- account for ROM delay
+	)
+	port map(
+		ClkxCI			=> ClkxCI,
+		RstxRBI			=> RstxRBI,
+		EnablexSI		=> '1',
+		InputxDI		=> PhaseMSBxSN,
+		OutputxDO		=> PhaseMSBxSP
+	);
 
 	------------------------------------------------------------------------------------------------
 	--	Synchronus process (sequential logic and registers)
@@ -104,27 +134,31 @@ begin
 	-- ProcessName: p_sync_rom
 	-- This process implements some registers.
 	--------------------------------------------
-	p_synq_regs : process (ClkxCI, RstxRBI)
+	p_sync_regs : process (ClkxCI, RstxRBI)
 	begin
 		if RstxRBI = '0' then
-			PiHalfxSP		<= '0';
-			InvSinxSP		<= '0';
-			InvCosxSP		<= '0';
-			LutAddrxSP		<= (others => '0');
-			PhaseMSBxSP		<= (others => '0');
-			SinxDP			<= (others => '0');
-			CosxDP			<= (others => '0');
+-- 			PiHalfxSP			<= '0';
+			InvSinxSP			<= '0';
+			InvCosxSP			<= '0';
+			LutAddrxSP			<= (others => '0');
+			LutOutxDP			<= (others => '0');
+-- 			PhaseMSBxSP			<= (others => '0');
+-- 			PhaseMSBDelayxSP	<= (others => '0');
+			SinxDP				<= (others => '0');
+			CosxDP				<= (others => '0');
 		elsif ClkxCI'event and ClkxCI = '1' then
-			PiHalfxSP		<= PiHalfxSN;
-			PiHalfDelayxSP	<= PiHalfxSP;
-			InvSinxSP		<= InvSinxSN;
-			InvCosxSP		<= InvCosxSN;
-			LutAddrxSP		<= LutAddrxSN;
-			PhaseMSBxSP		<= PhaseMSBxSN;
-			SinxDP			<= SinxDN;
-			CosxDP			<= CosxDN;
+-- 			PiHalfxSP			<= PiHalfxSN;
+-- 			PiHalfDelayxSP		<= PiHalfxSP;
+			InvSinxSP			<= InvSinxSN;
+			InvCosxSP			<= InvCosxSN;
+			LutAddrxSP			<= LutAddrxSN;
+			LutOutxDP			<= LutOutxDN;
+-- 			PhaseMSBxSP			<= PhaseMSBxSN;
+-- 			PhaseMSBDelayxSP	<= PhaseMSBxSP;
+			SinxDP				<= SinxDN;
+			CosxDP				<= CosxDN;
 		end if;
-	end process p_synq_regs;
+	end process;
 	
 	--------------------------------------------
 	-- ProcessName: p_sync_rom
@@ -133,9 +167,9 @@ begin
 	p_sync_rom : process (ClkxCI)
 	begin
 		if ClkxCI'event and ClkxCI = '1' then
-			LutOutxD <= TrigLUT(to_integer(unsigned(LutAddrxSP)));
+			LutOutxDN <= TrigLUT(to_integer(unsigned(LutAddrxSP)));
 		end if;
-	end process p_sync_rom;
+	end process;
 	
 	------------------------------------------------------------------------------------------------
 	--	Combinatorical process (parallel logic)
@@ -147,15 +181,15 @@ begin
 		else
 			PiHalfxSN <= '0';
 		end if;
-	end process p_comb_const;
+	end process;
 	
 	-- LUT address and 
 	PhaseMSBxSN		<= PhasexDI((LUT_DEPTH - 1) downto (LUT_DEPTH - 2));
 	LutAddrxSN		<= PhasexDI(LUT_DEPTH - 3 downto 0) when PhasexDI(LUT_DEPTH - 2) = '0' else twos_complement( PhasexDI(LUT_DEPTH - 3 downto 0) );
 	
 	-- output the "constant" value in extreme cases (pi/2), i.e. LutOutSinxD = 2^PRECISION-1 and LutOutCosxD = 0
-	LutOutSinxD		<= LutOutxD((2*LUT_AMPL_PREC - 1) downto LUT_AMPL_PREC)	when PiHalfDelayxSP = '0' else std_logic_vector(to_unsigned(2**(LUT_AMPL_PREC-1) - 1, LUT_AMPL_PREC));
-	LutOutCosxD		<= LutOutxD((LUT_AMPL_PREC - 1) downto 0) 				when PiHalfDelayxSP = '0' else std_logic_vector(to_unsigned(0, LUT_AMPL_PREC));
+	LutOutSinxD		<= LutOutxDP((2*LUT_AMPL_PREC - 1) downto LUT_AMPL_PREC)	when PiHalfxSP = '0' else std_logic_vector(to_unsigned(2**(LUT_AMPL_PREC-1) - 1, LUT_AMPL_PREC));
+	LutOutCosxD		<= LutOutxDP((LUT_AMPL_PREC - 1) downto 0)					when PiHalfxSP = '0' else std_logic_vector(to_unsigned(0, LUT_AMPL_PREC));
 		
 	-- invert signals
 	InvSinxSN 		<= PhaseMSBxSP(1);

@@ -129,7 +129,7 @@ begin
 	DELAY_VALID0 : entity work.DelayLine(rtl)
 	generic map (
 		DELAY_WIDTH		=> 1,
-		DELAY_CYCLES	=> 7 -- four instead of five, since EnabelxSI already introduces one cycle delay
+		DELAY_CYCLES	=> 12
 	)
 	port map(
 		ClkxCI			=> ClkxCI,

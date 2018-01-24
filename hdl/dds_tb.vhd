@@ -243,7 +243,7 @@ begin
 		variable LogLine : line;
 	begin
 		TaylorEnxS			<= '1';
-		TruncDithEnxS		<= '0';
+		TruncDithEnxS		<= '1';
 		PhaseDithEnxS		<= '0';
 		PhaseDithMasksxS	<= (others => '0');
 		
@@ -262,7 +262,9 @@ begin
 		
 		wait until rising_edge(RstxRB);
 		
-		--acount for latency of SWEEP(2), LUT(3), taylor(2) and dithering (3) -> 10 cycles
+		--acount for latency of SWEEP(2), LUT(5), taylor(2) and dithering (3) -> 12 cycles
+		wait until rising_edge(ClkxC);
+		wait until rising_edge(ClkxC);
 		wait until rising_edge(ClkxC);
 		wait until rising_edge(ClkxC);
 		wait until rising_edge(ClkxC);

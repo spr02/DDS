@@ -67,7 +67,7 @@ begin
                     end if;
                 end loop;
             end if;
-        end process p_sync;
+        end process;
         
         ------------------------------------------------
         --	Output Assignment

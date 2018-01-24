@@ -117,7 +117,7 @@ begin
 	LINE0 : entity work.DelayLine(rtl)
 	generic map (
 		DELAY_WIDTH		=> GRAD_WIDTH,
-		DELAY_CYCLES	=> 3	-- account for LUT delay
+		DELAY_CYCLES	=> 5	-- account for LUT delay
 	)
 	port map(
 		ClkxCI			=> ClkxCI,
