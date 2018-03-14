@@ -8,18 +8,19 @@ This is a simple DDS core, that can be used to generate simple complex sine wave
 - Truncation dithering
 - SFDR ~ 80dB
 
-![Example output](doc/images/20MHz_example.png)
+![](https://github.com/spr02/DDS/blob/master/doc/img/20MHZ_example.png)
 
 ## Repository overview
-This repository contains three folders:
+This repository contains four folders:
 ```
 	DDS
+	|-	doc
 	|-	hdl
 	|-	matlab
 	|-	misc
 ```
 
-The folder [matlab](matlab) contains the reference model for the DDS core. In the folder [hdl](hdl) all VHDL files can be found, together with a Makefile for ghdl. The folder [misc](misc) contains a README with some useful links.
+The folder [matlab](matlab) contains the reference model for the DDS core. In the folder [hdl](hdl) all VHDL files can be found, together with a Makefile for ghdl. The folder [misc](misc) contains a README with some useful links. Finally the folder [doc](doc) will contain a documentation soon.
 
 ## TODO:
 - check automatic verification
