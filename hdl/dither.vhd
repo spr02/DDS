@@ -129,7 +129,7 @@ begin
     -- This process implements an multiplexer that forwards either the dithered amplitude or
     -- simply the input value.
     --------------------------------------------
-	p_comb_mux_dither : process(DitherEnxSI, AmplInxDP, AmplDitheredxDP)
+	p_comb_mux_dither : process(DitherEnxSI, AmplInDelayxDP, AmplDitheredxDP)
 	begin
 		if DitherEnxSI = '1' then
 			AmplOutxDN <= AmplDitheredxDP;

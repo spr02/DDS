@@ -8,6 +8,8 @@ This is a simple DDS core, that can be used to generate simple complex sine wave
 - Truncation dithering
 - SFDR ~ 80dB
 
+![Example output](doc/images/20MHz_example.png)
+
 ## Repository overview
 This repository contains three folders:
 ```
