@@ -43,6 +43,7 @@ entity dds is
 		SweepEnxSI			: in  std_logic;
 		SweepUpDownxSI		: in  std_logic;
 		SweepRatexDI		: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
+		SweepSyncxSO		: out std_logic;
 		
 		TopFTWxDI			: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
 		BotFTWxDI			: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
@@ -88,6 +89,11 @@ architecture arch of dds is
 	signal UpxSP, UpxSN					: std_logic;
 	signal DownxSP, DownxSN				: std_logic;
 	signal SweepRatexDP, SweepRatexDN	: std_logic_vector((PHASE_WIDTH - 1) downto 0);
+	signal SweepRstxSP					: std_logic_vector(1 downto 0); -- edge detection of reset
+	signal SweepRstxS					: std_logic; -- set when tunig word is reset to BotFTW
+	signal SweepChngxSP					: std_logic_vector(1 downto 0); -- edge detection of change rate
+	signal SweepChngxS					: std_logic; -- set whenever direction of up/down sweep is changed
+	signal SweepSyncxSP, SweepSyncxSN	: std_logic;
 	
 	-- ouput signals
 	signal ValidxS						: std_logic;
@@ -153,6 +159,7 @@ begin
 			UpxSP			<= '0';
 			DownxSP			<= '0';
 			SweepRatexDP	<= std_logic_vector(to_unsigned(2**(PHASE_WIDTH-5), PHASE_WIDTH)); -- initialize with a value not zero
+			SweepSyncxSP	<= '0';
 -- 			SweepRatexDP	<= SweepRatexDI;
 			FTWxDP			<= (others => '0');
 -- 			FTWxDP			<= BotFTWxDI;
@@ -160,6 +167,7 @@ begin
 			UpxSP			<= UpxSN;
 			DownxSP			<= DownxSN;
 			SweepRatexDP	<= SweepRatexDN;
+			SweepSyncxSP	<= SweepSyncxSN;
 			FTWxDP			<= FTWxDN;
 		end if;
 	end process;
@@ -168,8 +176,8 @@ begin
 	------------------------------------------------------------------------------------------------
 	--	Combinatorical process (parallel logic)
 	------------------------------------------------------------------------------------------------
-	UpxSN	<= '1' when (signed(FTWxDP) < signed(TopFTWxDI)) else '0'; -- smaller than top
-	DownxSN	<= '1' when (signed(FTWxDP) > signed(BotFTWxDI)) else '0'; -- greater than bot
+	UpxSN		<= '1' when (signed(FTWxDP) < signed(TopFTWxDI)) else '0'; -- smaller than top
+	DownxSN		<= '1' when (signed(FTWxDP) > signed(BotFTWxDI)) else '0'; -- greater than bot
 	
 	--------------------------------------------
     -- ProcessName: p_comb_sweep_rate
@@ -199,22 +207,47 @@ begin
 	begin
 		if SweepEnxSI = '1' then
 			if SweepUpDownxSI = '0' and UpxSP = '0' then
-				FTWxDN	<= BotFTWxDI; -- in case of linear up chirp, reset FWT if top is reached
+				FTWxDN		<= BotFTWxDI; -- in case of linear up chirp, reset FWT if top is reached
 			else
-				FTWxDN	<= std_logic_vector(signed(FTWxDP) + signed(SweepRatexDP));
+				FTWxDN		<= std_logic_vector(signed(FTWxDP) + signed(SweepRatexDP));
 			end if;
 		else
-			FTWxDN	<= BotFTWxDI;
+			FTWxDN		<= BotFTWxDI;
 		end if;
 	end process;
 	
+	
+	-- generate sync signal
+	p_sync_rate_change : process(ClkxCI, RstxRBI)
+	begin
+		if RstxRBI = '0' then
+			SweepChngxSP	<= (others => '0');
+		elsif rising_edge(ClkxCI) then
+			SweepChngxSP	<= SweepChngxSP(0) & ((UpxSP xor DownxSP) and SweepUpDownxSI);
+		end if;
+	end process;
+	SweepChngxS <= SweepChngxSP(0) and not SweepChngxSP(1);
+	
+	p_sync_ftw_reset : process(ClkxCI, RstxRBI)
+	begin
+		if RstxRBI = '0' then
+			SweepRstxSP	<= (others => '0');
+		elsif rising_edge(ClkxCI) then
+			SweepRstxSP	<= SweepRstxSP(0) & (not UpxSP and not SweepUpDownxSI);
+		end if;
+	end process;
+	SweepRstxS <= SweepRstxSP(0) and not SweepRstxSP(1);
+	
+	-- Set sync signal whenever sweeprate changes or FTW is reset
+	SweepSyncxSN <= SweepRstxS or  SweepChngxS;
 
 	------------------------------------------------------------------------------------------------
 	--	Output Assignment
 	------------------------------------------------------------------------------------------------
-	ValidxSO	<= ValidxS;		-- valid signal for I and Q component
-	PhixDO		<= PhixD;		-- phase output
-	QxDO		<= QxD;			-- sine or Q component
-	IxDO		<= IxD;			-- cosine or I component
+	SweepSyncxSO	<= SweepSyncxSP;	-- sync signal, set whenever FTW is reset
+	ValidxSO		<= ValidxS;			-- valid signal for I and Q component
+	PhixDO			<= PhixD;			-- phase output
+	QxDO			<= QxD;				-- sine or Q component
+	IxDO			<= IxD;				-- cosine or I component
 
 end arch;

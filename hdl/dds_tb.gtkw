@@ -1,15 +1,15 @@
 [*]
-[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Wed Jan 24 23:06:44 2018
+[*] GTKWave Analyzer v3.3.94 (w)1999-2018 BSI
+[*] Sat Jan  5 13:35:19 2019
 [*]
-[dumpfile] "/home/jannik/git/DDS/hdl/dds_tb.fst"
-[dumpfile_mtime] "Wed Jan 24 23:06:22 2018"
-[dumpfile_size] 127533
-[savefile] "/home/jannik/git/DDS/hdl/dds_tb.gtkw"
-[timestart] 0
+[dumpfile] "/home/jannik/git_desktop/LimeDDS_GW/src/DDS/hdl/dds_tb.fst"
+[dumpfile_mtime] "Sat Jan  5 13:34:13 2019"
+[dumpfile_size] 580029
+[savefile] "/home/jannik/git_desktop/LimeDDS_GW/src/DDS/hdl/dds_tb.gtkw"
+[timestart] 359479000000
 [size] 1920 1015
 [pos] 2567 0
-*-28.430107 50000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-30.430107 364350000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] i0.
 [treeopen] i0.dds0.
 [treeopen] i0.dds0.lut0.
@@ -63,6 +63,8 @@ i0.sweepratexdp[31:0]
 i0.botftwxdi[31:0]
 i0.topftwxdi[31:0]
 i0.ftwxdp[31:0]
+@29
+i0.sweepsyncxso
 @28
 i0.upxsp
 i0.downxsp

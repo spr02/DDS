@@ -10,51 +10,8 @@ end dds_tb;
 
 architecture behav of dds_tb is
 	--------------------------------------------------------------------------------------
-	-- Components to be tested
+	-- Helper functions
 	--------------------------------------------------------------------------------------
-	component dds is
-		generic(
-			LUT_DEPTH		: integer := 8;		-- number of lut address bits
-			LUT_AMPL_PREC	: integer := 16;	-- number of databits stored in LUT for amplitude
-			LUT_GRAD_PREC	: integer := 5;		-- number of databist stored in LUT for gradient (slope)
-			PHASE_WIDTH		: integer := 32;	-- number of bits of phase accumulator
-			GRAD_WIDTH		: integer := 18;	-- number of LSBs used from the phase acc for interpolation
-			LFSR_WIDTH		: integer := 32;	-- number of bits used for the LFSR/PNGR
-			LFSR_POLY       : std_logic_vector := "111"; -- polynomial of the LFSR/PNGR
-			LFSR_SEED		: integer := 12364;	-- seed for LFSR
-			OUT_WIDTH		: integer := 12		-- number of bits actually output (should be equal to DAC bits)
-		);
-		port(
-			ClkxCI				: in  std_logic;
-			RstxRBI				: in  std_logic;
-			
-			EnablexSI			: in  std_logic;
-		
-			TaylorEnxSI			: in  std_logic;
-	-- 		TaylorAutoxSI	: in  std_logic; --needed???
-			
-			TruncDithEnxSI		: in std_logic;
-	-- 		DitherAutoxSI	: in  std_logic; --needed???
-			PhaseDithEnxSI		: in  std_logic;
-			PhaseDithMasksxSI	: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
-			
-			--sweep logic
-			SweepEnxSI			: in  std_logic;
-			SweepUpDownxSI		: in  std_logic;
-			SweepRatexDI		: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
-			
-			TopFTWxDI			: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
-			BotFTWxDI			: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
-			
-			PhixDI				: in  std_logic_vector((PHASE_WIDTH - 1) downto 0);
-			
-			ValidxSO			: out std_logic;
-			PhixDO				: out std_logic_vector((PHASE_WIDTH - 1) downto 0);
-			QxDO				: out std_logic_vector((OUT_WIDTH - 1) downto 0);
-			IxDO				: out std_logic_vector((OUT_WIDTH - 1) downto 0)
-		);
-	end component;
-	
 	function param_slv_to_matlab_log (name : string; x : std_logic_vector) return line is
 		variable LogLine : line;
 	begin
@@ -145,6 +102,7 @@ architecture behav of dds_tb is
 	signal SweepEnxS		: std_logic;
 	signal SweepUpDownxS	: std_logic;
 	signal SweepRatexD		: std_logic_vector((PHASE_WIDTH - 1) downto 0);
+	signal SweepSyncxS		: std_logic;
 	signal TopFTWxD			: std_logic_vector((PHASE_WIDTH - 1) downto 0);
 	signal BotFTWxD			: std_logic_vector((PHASE_WIDTH - 1) downto 0);
 			
@@ -163,7 +121,7 @@ begin
 	--	  INSTANTIATE Component
 	------------------------------------------------
 	
-	I0 : dds
+	I0 : entity work.dds
 	generic map(
 		LUT_DEPTH		=> LUT_DEPTH,		-- number of lut address bits
 		LUT_AMPL_PREC	=> LUT_AMPL_PREC,	-- number of databits stored in LUT for amplitude
@@ -179,7 +137,7 @@ begin
 		ClkxCI				=> ClkxC,
 		RstxRBI				=> RstxRB,
 		
-		EnablexSI			=> '1',
+		EnablexSI			=> EnablexS,--'1',
 		
 		TaylorEnxSI			=> TaylorEnxS,
 		
@@ -191,6 +149,7 @@ begin
 		SweepEnxSI			=> SweepEnxS,
 		SweepUpDownxSI		=> SweepUpDownxS,
 		SweepRatexDI		=> SweepRatexD,
+		SweepSyncxSO		=> SweepSyncxS,
 		
 		TopFTWxDI			=> TopFTWxD,
 		BotFTWxDI			=> BotFTWxD,
@@ -247,9 +206,9 @@ begin
 		PhaseDithEnxS		<= '0';
 		PhaseDithMasksxS	<= (others => '0');
 		
-		SweepEnxS			<= '0';
+		SweepEnxS			<= '1';
 		SweepUpDownxS		<= '0';
-		SweepRatexD			<= "00000000000000111111000000000000";
+		SweepRatexD			<= "00000000001100111111000000000000";
 		TopFTWxD			<= "00011100000000000000000000000000";
 -- 		BotFTWxD			<= ;
 		
